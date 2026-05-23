@@ -1,0 +1,46 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Work {
+  id             String           @id @default(cuid())
+  externalId     String?
+  title          String
+  author         String?
+  description    String
+  coverUrl       String?
+  coverFileName  String?
+  category       String?
+  currentPlays   Int?
+  currentCtr     Float?
+  currentFinish  Float?
+  notes          String?
+  status         WorkStatus       @default(imported)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  analyses       AnalysisResult[]
+}
+
+model AnalysisResult {
+  id            String   @id @default(cuid())
+  workId        String
+  score         Int
+  grade         String
+  summary       String
+  titleIdeas    String
+  introIdeas    String
+  riskNotes     String
+  createdAt     DateTime @default(now())
+  work          Work     @relation(fields: [workId], references: [id], onDelete: Cascade)
+}
+
+enum WorkStatus {
+  imported
+  analyzed
+  failed
+}
