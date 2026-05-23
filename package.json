@@ -10,6 +10,7 @@
     "db:push": "prisma db push",
     "db:test": "node scripts/test-prisma-connection.cjs",
     "db:test-import": "node scripts/test-import-db.cjs",
+    "db:test-rating": "node scripts/test-rating-db.cjs",
     "db:studio": "prisma studio"
   },
   "dependencies": {

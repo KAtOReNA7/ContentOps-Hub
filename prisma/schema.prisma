@@ -25,6 +25,7 @@ model Work {
   updatedAt      DateTime         @updatedAt
   analyses        AnalysisResult[]
   identifications WorkIdentification[]
+  ratings         WorkRating[]
 }
 
 model AnalysisResult {
@@ -55,8 +56,31 @@ model WorkIdentification {
   updatedAt       DateTime @updatedAt
 
   work Work @relation(fields: [workId], references: [id], onDelete: Cascade)
+  ratings WorkRating[]
 
   @@index([workId])
+}
+
+model WorkRating {
+  id               String   @id @default(cuid())
+  workId           String
+  identificationId String?
+  rating           String
+  score            Float
+  confidence       Float
+  reasonsJson      String
+  risksJson        String
+  evidenceJson     String
+  renameSuggestion String
+  renameReason     String
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  work           Work                @relation(fields: [workId], references: [id], onDelete: Cascade)
+  identification WorkIdentification? @relation(fields: [identificationId], references: [id], onDelete: SetNull)
+
+  @@index([workId])
+  @@index([identificationId])
 }
 
 enum WorkStatus {

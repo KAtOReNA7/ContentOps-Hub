@@ -381,3 +381,189 @@ Prisma / SQLite 状态：
 - 当前分支：`main`
 - 首次 push：成功，`main` 已推送并跟踪 `origin/main`。
 - 当前提交状态：本地已有阶段提交，并已推送到 GitHub。
+
+## Codex 指令 6A 作品价值评级纯规则函数
+
+更新时间：2026-05-23
+
+- 6A 已完成纯 TypeScript 规则评级函数。
+- 新增 `src/lib/rating/rating-types.ts`。
+- 新增 `src/lib/rating/rating-engine.ts`。
+- 新增 `src/lib/rating/rating-engine.examples.ts`，用于展示 3 个手动理解规则的示例输入和输出。
+- 评级函数：`evaluateWorkRating(input)`。
+- 评级档位：`S`、`A`、`B`、`C`、`D`。
+- 输出包含：
+  - `rating`
+  - `score`
+  - `confidence`
+  - `reasons`
+  - `risks`
+  - `evidence`
+  - `renameSuggestion`
+  - `renameReason`
+- 当前规则考虑：
+  - 作品识别置信度
+  - 书名商业吸引力
+  - 简介信息密度
+  - 题材商业性
+  - 播放量、点击率、完播率
+  - 重名或误识别风险
+- 本阶段没有修改 `prisma/schema.prisma`。
+- 本阶段没有修改 API route。
+- 本阶段没有修改 React 页面。
+- 本阶段没有运行 `db:push`。
+- 本阶段没有新增依赖。
+- 本阶段没有运行 lint。
+- 本阶段没有接 OpenAI 或真实搜索 API。
+
+检查结果：
+
+- `npm run typecheck`：通过。
+- `npm run build`：通过。
+
+下一步：
+
+- 可以进入 6B：将评级规则接入后端保存或 API，但仍需避免接 OpenAI、真实搜索、书名生成和封面生成。
+
+## Codex 指令 6B 评级结果数据库保存
+
+更新时间：2026-05-23
+
+- 6B 已完成评级结果数据库模型。
+- 新增 `WorkRating` 模型，用于保存作品价值评级结果。
+- `Work` 模型新增 `ratings WorkRating[]` 关系字段。
+- `WorkIdentification` 模型新增 `ratings WorkRating[]` 关系字段。
+- 未修改 `Work` 既有业务字段。
+- 未修改 `WorkIdentification` 既有业务字段。
+- 新增 `src/lib/rating/rating-repository.ts`，提供 `saveWorkRating(params)`：
+  - 输入 `workId`
+  - 可选 `identificationId`
+  - 输入 `RatingResult`
+  - 将 `reasons`、`risks`、`evidence` 以 JSON 字符串保存
+  - 不重新计算评级
+  - 不调用 OpenAI
+  - 不调用搜索
+  - 不修改原始 `Work`
+- 新增 `scripts/test-rating-db.cjs`。
+- `package.json` 新增 `npm run db:test-rating`。
+- 已执行 `db:push`。本次只新增 `WorkRating` 表和索引，没有出现数据丢失警告。
+- Prisma Client 已重新生成。
+- 未使用 `--accept-data-loss`。
+- 未使用 `--force-reset`。
+- 未升级 Prisma。
+- 未使用 `node -e`。
+- 未运行 lint。
+- 本阶段没有改页面。
+- 本阶段没有改 API。
+- 本阶段没有接 OpenAI 或真实搜索。
+- 本阶段没有开发书名生成或封面生成。
+
+检查结果：
+
+- `npm exec -- prisma validate`：通过。
+- `npm exec -- prisma generate`：通过。
+- `npm run typecheck`：通过。
+- `npm run build`：通过。
+- `npm run db:test`：通过，输出 `Prisma connected. Work count: 24`。
+- `npm run db:test-import`：通过，测试 Work 可继续写入并查询 SQLite。
+- `npm run db:test-rating`：通过，测试 `WorkRating` 可写入并查询 SQLite。
+
+下一步：
+
+- 可以进入 6C：在不接 OpenAI、不开发生成能力的前提下，将评级规则接入后端流程或 API。
+
+## Codex 指令 6C 作品价值评级 API
+
+更新时间：2026-05-23
+
+- 6C 已完成评级 API。
+- 新增 `POST /api/works/[id]/rating`：
+  - 根据作品 id 读取 `Work`
+  - 读取最近一次 `WorkIdentification`
+  - 无识别结果时仍允许评级，并降低置信度、加入风险
+  - 调用 `evaluateWorkRating(input)`
+  - 调用 `saveWorkRating(params)` 保存评级结果
+  - 返回结构化 JSON
+- 新增 `GET /api/works/[id]/rating`：
+  - 查询最近一次 `WorkRating`
+  - 无评级结果时返回 `{ success: true, data: null }`
+  - 有评级结果时解析 `reasonsJson`、`risksJson`、`evidenceJson`
+- 新增 `docs/rating-api.md`。
+- 本阶段没有修改 `prisma/schema.prisma`。
+- 本阶段没有运行 `db:push`。
+- 本阶段没有修改页面 UI。
+- 本阶段没有修改作品识别 API。
+- 本阶段没有新增依赖。
+- 本阶段没有运行 lint。
+- 本阶段没有接 OpenAI 或真实搜索。
+- 本阶段没有开发书名生成或封面生成。
+
+检查结果：
+
+- `npm run typecheck`：通过。
+- `npm run build`：通过。
+- `npm run db:test`：通过，输出 `Prisma connected. Work count: 25`。
+- `npm run db:test-import`：通过，测试 Work 可继续写入并查询 SQLite。
+- `npm run db:test-rating`：通过，测试 `WorkRating` 可继续写入并查询 SQLite。
+
+下一步：
+
+- 可以进入 6D：将评级结果接入作品详情页展示。
+
+## Codex 指令 6D 作品详情页评级 UI
+
+更新时间：2026-05-24
+
+- 6D 已完成作品详情页评级 UI。
+- 作品详情页可以调用 `GET /api/works/[id]/rating` 读取已有评级结果。
+- 作品详情页可以调用 `POST /api/works/[id]/rating` 运行评级。
+- 页面可以展示：
+  - 当前评级状态
+  - 评级档位
+  - 评级分数
+  - 评级置信度
+  - 评级理由
+  - 风险点
+  - 证据说明
+  - 多书名运营建议
+  - 多书名建议理由
+- 页面会展示 GET/POST 失败、`success: false`、网络请求失败、评级字段缺失等错误。
+- 本阶段没有修改 `prisma/schema.prisma`。
+- 本阶段没有运行 `db:push`。
+- 本阶段没有修改 API。
+- 本阶段没有修改导入页、导入 API 或作品列表基础功能。
+- 本阶段没有接 OpenAI 或真实搜索。
+- 本阶段没有开发书名生成或封面生成。
+- 本阶段没有创建 Git commit，等待阶段 6 全部完成并手动测试通过后统一提交。
+
+检查结果：
+
+- `npm run typecheck`：通过。
+- `npm run build`：通过。
+- `npm run db:test`：通过，输出 `Prisma connected. Work count: 26`。
+- `npm run db:test-import`：通过，测试 Work 可继续写入并查询 SQLite。
+- `npm run db:test-rating`：通过，测试 `WorkRating` 可继续写入并查询 SQLite。
+
+下一步：
+
+- 可以手动运行 `npm run dev` 验证阶段 6：作品详情页识别与评级流程。
+- 手动测试通过后，建议统一提交阶段 6。
+
+## Codex 指令 6 阶段归档
+
+更新时间：2026-05-24
+
+- 阶段 6 作品价值评级模块已完成。
+- 已手动测试通过。
+- 6A 评级规则引擎已完成。
+- 6B 评级结果保存能力已完成。
+- 6C 评级 API 已完成。
+- 6D 评级 UI 已完成。
+- `npm run typecheck`：通过。
+- `npm run build`：通过。
+- `npm run db:test`：通过。
+- `npm run db:test-import`：通过。
+- `npm run db:test-rating`：通过。
+- 阶段 6 未接 OpenAI。
+- 阶段 6 未接真实搜索 API。
+- 阶段 6 未开发书名生成或封面生成。
