@@ -371,3 +371,13 @@ Prisma / SQLite 状态：
 
 - 可以手动运行 `npm run dev`，进入作品详情页测试“运行识别”和“人工确认”。
 - 手动验证通过后，再进入 Codex 指令 6。
+
+## GitHub 远程仓库关联
+
+更新时间：2026-05-23
+
+- 已关联 GitHub 远程仓库。
+- 当前远程地址：`https://github.com/KAtOReNA7/-2.git`
+- 当前分支：`main`
+- 首次 push：成功，`main` 已推送并跟踪 `origin/main`。
+- 当前提交状态：本地已有阶段提交，并已推送到 GitHub。
