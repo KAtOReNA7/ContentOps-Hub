@@ -205,3 +205,169 @@ Prisma / SQLite 状态：
 - `db:test` 已修复为 `prisma.work.count()` 最小真实查询版本，当前通过，输出 `Prisma connected. Work count: 1`。
 - 本阶段没有进入作品识别、评级、书名生成、封面生成、搜索 API 或 OpenAI API。
 - 归档时发现当前目录尚未初始化 Git 仓库；为创建阶段提交，需要初始化 Git 仓库并提交当前文件。
+
+## Codex 指令 5 作品识别 Mock 恢复记录
+
+更新时间：2026-05-23
+
+- 指令 5 在 `search-adapter.ts` 编辑阶段超过 9 分钟，已中断并进入恢复检查。
+- 当前未继续开发评级、书名生成、封面生成、真实搜索 API 或 OpenAI API。
+- 当前未运行 `db:push`，未运行 lint，未使用 `node -e`。
+
+当前已写入但未完成验证的内容：
+
+- `prisma/schema.prisma` 已被修改，新增 `WorkIdentification` 模型，并在 `Work` 上新增 `identification` 关系。
+- `src/lib/adapters/search-adapter.ts` 已部分扩展：
+  - 新增 `SearchAdapter.identifyWork`
+  - 新增 Mock 候选作品生成
+  - 新增候选评分逻辑，考虑书名相似度、作者一致性、简介关键词、品类和疑似重名
+  - 新增最终匹配结果结构
+- 新增 API 文件：
+  - `src/app/api/works/[id]/identify/route.ts`
+  - `src/app/api/works/[id]/identify/confirm/route.ts`
+- 新增前端面板文件：
+  - `src/app/works/[id]/work-identification-panel.tsx`
+
+当前未完成项：
+
+- 作品详情页尚未接入 `WorkIdentificationPanel`。
+- `docs/work-identification.md` 尚未创建。
+- Prisma schema 尚未同步到 SQLite。
+- 未运行 `typecheck`、`build`、`db:test`、`db:test-import`。
+- 当前代码处于可继续编辑状态，但指令 5 尚未完成。
+
+建议拆分：
+
+1. 先完成 schema 同步和 Prisma Client 生成。
+2. 再把作品详情页接入识别面板，只展示已有或新跑出的识别结果。
+3. 再补 `docs/work-identification.md`。
+4. 最后运行限定检查命令并手动测试“运行识别”和“人工确认”。
+
+## Codex 指令 5B 识别结果数据库保存
+
+更新时间：2026-05-23
+
+- 5A 已完成 `MockSearchAdapter` 纯函数模块，提供 `identifyWorkWithMock(work)`。
+- 5B 新增最小 `WorkIdentification` 模型，用于保存作品识别结果。
+- `Work` 模型新增 `identifications WorkIdentification[]` 关系字段，未修改已有导入业务字段。
+- `WorkIdentification` 字段包括：
+  - `workId`
+  - `candidatesJson`
+  - `finalMatchJson`
+  - `confidence`
+  - `reason`
+  - `risksJson`
+  - `confirmed`
+  - `confirmedTitle`
+  - `confirmedAuthor`
+- 已修复 `prisma.workIdentification` 类型不存在问题。
+- 已最小修复半成品 API，使字段名与 schema 保持一致：
+  - `src/app/api/works/[id]/identify/route.ts`
+  - `src/app/api/works/[id]/identify/confirm/route.ts`
+- `db:push` 已执行。本次是新增表和索引，不涉及删除已有导入数据；执行过程中没有出现数据丢失警告。
+- 未使用 `--accept-data-loss`。
+- 未使用 `--force-reset`。
+- 未升级 Prisma。
+- 未使用 `node -e`。
+- 未运行 lint。
+- 未开发评级、书名生成、封面生成、真实搜索 API 或 OpenAI API。
+
+检查结果：
+
+- `npm exec -- prisma validate`：通过。
+- `npm exec -- prisma generate`：通过，Prisma Client 已生成。
+- `npm run db:test`：通过，输出 `Prisma connected. Work count: 21`。
+- `npm run typecheck`：通过。
+- `npm run build`：通过。
+- `npm run db:test-import`：通过，测试 Work 可继续写入并查询 SQLite。
+
+影响评估：
+
+- 批量导入功能未被修改。
+- `db:test-import` 通过，说明 Work 写入链路仍可用。
+- 当前可以继续执行 5C：把作品详情页接入识别结果展示和操作。
+
+## Codex 指令 5C 作品识别 API 收敛
+
+更新时间：2026-05-23
+
+- 5C 已完成后端作品识别 API 收敛。
+- `POST /api/works/[id]/identify` 可运行：
+  - 根据作品 id 读取 `Work`
+  - Work 不存在时返回 404 结构化错误
+  - 调用 `identifyWorkWithMock`
+  - 将候选结果、最终匹配、置信度、原因、风险保存到 `WorkIdentification`
+  - 返回 `{ success: true, data: { identificationId, candidates, finalMatch, confidence, reason, risks } }`
+- `POST /api/works/[id]/identify/confirm` 可运行：
+  - 请求体需要 `identificationId`
+  - 按 `workId + identificationId` 查找识别记录
+  - 保存 `confirmed`、`confirmedTitle`、`confirmedAuthor`
+  - 不修改原始 `Work` 数据，不删除历史识别结果
+- 两个 route handler 均设置 `export const runtime = "nodejs"`。
+- 本阶段没有修改页面 UI。
+- 本阶段没有修改 `prisma/schema.prisma`。
+- 本阶段没有运行 `db:push`。
+- 本阶段没有运行 lint。
+- 本阶段没有接真实搜索 API 或 OpenAI API。
+- 本阶段没有开发评级、书名生成或封面生成。
+
+检查结果：
+
+- `npm run typecheck`：通过。
+- `npm run build`：通过。
+- `npm run db:test`：通过，输出 `Prisma connected. Work count: 22`。
+- `npm run db:test-import`：通过，测试 Work 可继续写入并查询 SQLite。
+
+下一步：
+
+- 可以继续执行 5D：将作品详情页接入识别 API 和识别结果展示。
+
+## Codex 指令 5D 作品详情页识别 UI
+
+更新时间：2026-05-23
+
+- 5D 已完成作品详情页识别 UI。
+- 作品详情页现在可以展示“作品识别 Mock”区域。
+- 作品详情页可以调用 `POST /api/works/[id]/identify` 运行识别。
+- 页面可以展示：
+  - 当前识别状态
+  - 最终匹配作品名
+  - 最终匹配作者
+  - 置信度
+  - 匹配理由
+  - 风险点
+  - 候选作品列表
+- 候选作品列表展示：
+  - 候选作品名
+  - 作者
+  - 来源平台
+  - 简介摘要
+  - 匹配分数
+  - 匹配理由
+  - 排除理由
+  - 是否疑似重名
+- 页面可以调用 `POST /api/works/[id]/identify/confirm` 进行人工确认。
+- 人工确认支持提交：
+  - `identificationId`
+  - `confirmedTitle`
+  - `confirmedAuthor`
+- 页面会展示 API 404、API 500、`success: false`、网络请求失败、`identificationId` 缺失等错误。
+- 本阶段没有修改 `prisma/schema.prisma`。
+- 本阶段没有运行 `db:push`。
+- 本阶段没有运行 lint。
+- 本阶段没有新增依赖。
+- 本阶段没有修改导入页、导入 API 或作品列表基础功能。
+- 本阶段没有接真实搜索 API 或 OpenAI API。
+- 本阶段没有开发评级、书名生成或封面生成。
+
+检查结果：
+
+- `npm run typecheck`：通过。
+- `npm run build`：通过。
+- `npm run db:test`：通过，输出 `Prisma connected. Work count: 23`。
+- `npm run db:test-import`：通过，测试 Work 可继续写入并查询 SQLite。
+
+下一步：
+
+- 可以手动运行 `npm run dev`，进入作品详情页测试“运行识别”和“人工确认”。
+- 手动验证通过后，再进入 Codex 指令 6。

@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { WorkIdentificationPanel, type WorkIdentificationView } from "@/app/works/[id]/work-identification-panel";
+import type { CandidateWork, FinalMatch } from "@/lib/adapters/search-adapter";
 import { prisma } from "@/server/db";
 
 type WorkDetailPageProps = {
@@ -10,11 +12,31 @@ export default async function WorkDetailPage({ params }: WorkDetailPageProps) {
   const { id } = await params;
   const work = await prisma.work.findUnique({
     where: { id },
+    include: {
+      identifications: {
+        orderBy: { updatedAt: "desc" },
+        take: 1,
+      },
+    },
   });
 
   if (!work) {
     notFound();
   }
+  const identification = work.identifications[0];
+  const initialIdentification: WorkIdentificationView | null = identification
+    ? {
+        identificationId: identification.id,
+        candidates: safeJsonParse<CandidateWork[]>(identification.candidatesJson, []),
+        finalMatch: safeJsonParse<FinalMatch | null>(identification.finalMatchJson, null),
+        confidence: identification.confidence,
+        reason: identification.reason,
+        risks: safeJsonParse<string[]>(identification.risksJson, []),
+        confirmed: identification.confirmed,
+        confirmedTitle: identification.confirmedTitle,
+        confirmedAuthor: identification.confirmedAuthor,
+      }
+    : null;
 
   return (
     <div className="space-y-6">
@@ -69,6 +91,16 @@ export default async function WorkDetailPage({ params }: WorkDetailPageProps) {
         <h2 className="font-semibold text-stone-950">备注</h2>
         <p className="mt-3 text-stone-600">{work.notes || "-"}</p>
       </section>
+
+      <WorkIdentificationPanel workId={work.id} initialIdentification={initialIdentification} />
     </div>
   );
+}
+
+function safeJsonParse<T>(value: string, fallback: T): T {
+  try {
+    return JSON.parse(value) as T;
+  } catch {
+    return fallback;
+  }
 }

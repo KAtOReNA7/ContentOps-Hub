@@ -23,7 +23,8 @@ model Work {
   status         WorkStatus       @default(imported)
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
-  analyses       AnalysisResult[]
+  analyses        AnalysisResult[]
+  identifications WorkIdentification[]
 }
 
 model AnalysisResult {
@@ -37,6 +38,25 @@ model AnalysisResult {
   riskNotes     String
   createdAt     DateTime @default(now())
   work          Work     @relation(fields: [workId], references: [id], onDelete: Cascade)
+}
+
+model WorkIdentification {
+  id              String   @id @default(cuid())
+  workId          String
+  candidatesJson  String
+  finalMatchJson  String
+  confidence      Float
+  reason          String
+  risksJson       String
+  confirmed       Boolean  @default(false)
+  confirmedTitle  String?
+  confirmedAuthor String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  work Work @relation(fields: [workId], references: [id], onDelete: Cascade)
+
+  @@index([workId])
 }
 
 enum WorkStatus {
