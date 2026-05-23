@@ -26,6 +26,7 @@ model Work {
   analyses        AnalysisResult[]
   identifications WorkIdentification[]
   ratings         WorkRating[]
+  titleIntroGenerations WorkTitleIntroGeneration[]
 }
 
 model AnalysisResult {
@@ -57,6 +58,7 @@ model WorkIdentification {
 
   work Work @relation(fields: [workId], references: [id], onDelete: Cascade)
   ratings WorkRating[]
+  titleIntroGenerations WorkTitleIntroGeneration[]
 
   @@index([workId])
 }
@@ -78,9 +80,35 @@ model WorkRating {
 
   work           Work                @relation(fields: [workId], references: [id], onDelete: Cascade)
   identification WorkIdentification? @relation(fields: [identificationId], references: [id], onDelete: SetNull)
+  titleIntroGenerations WorkTitleIntroGeneration[]
 
   @@index([workId])
   @@index([identificationId])
+}
+
+model WorkTitleIntroGeneration {
+  id                     String   @id @default(cuid())
+  workId                 String
+  identificationId        String?
+  ratingId                String?
+  shouldGenerateVariants  Boolean
+  strategy                String
+  strategyReason          String
+  titleVariantsJson       String
+  introVariantJson        String
+  coverPromptsJson        String
+  risksJson               String
+  evidenceJson            String
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  work           Work                @relation(fields: [workId], references: [id], onDelete: Cascade)
+  identification WorkIdentification? @relation(fields: [identificationId], references: [id], onDelete: SetNull)
+  rating         WorkRating?         @relation(fields: [ratingId], references: [id], onDelete: SetNull)
+
+  @@index([workId])
+  @@index([identificationId])
+  @@index([ratingId])
 }
 
 enum WorkStatus {

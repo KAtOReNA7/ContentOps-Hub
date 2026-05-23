@@ -567,3 +567,177 @@ Prisma / SQLite 状态：
 - 阶段 6 未接 OpenAI。
 - 阶段 6 未接真实搜索 API。
 - 阶段 6 未开发书名生成或封面生成。
+
+## Codex 指令 7A 书名和简介优化 Mock 纯函数
+
+更新时间：2026-05-24
+
+- 7A 已完成书名和简介优化 Mock 纯函数。
+- 新增 `src/lib/generation/title-intro-types.ts`，定义生成输入、输出、书名建议、简介建议和封面 prompt 建议结构。
+- 新增 `src/lib/generation/title-intro-engine.ts`，提供 `generateTitleIntroSuggestions(input)`。
+- 新增 `src/lib/generation/title-intro-engine.examples.ts`，包含 S/B/C/D 档示例输入和输出。
+- 当前生成策略根据 `rating.renameSuggestion` 决定：
+  - `avoid`：保留原名，仅做轻微简介优化。
+  - `cautious`：轻度优化，生成 1-3 个保守书名方向。
+  - `recommended`：多书名测试，生成 3-5 个强化题材、冲突、爽点的书名。
+  - `strongly_recommended`：重包装，生成 3-5 个更强卖点方向，但不脱离作品信息。
+- 本阶段没有修改 `prisma/schema.prisma`。
+- 本阶段没有修改 API route。
+- 本阶段没有修改 React 页面。
+- 本阶段没有新增依赖。
+- 本阶段没有运行 `db:push`。
+- 本阶段没有运行 lint。
+- 本阶段没有使用 `node -e`。
+- 本阶段没有接 OpenAI。
+- 本阶段没有接真实搜索 API。
+- 本阶段没有生成图片，只生成封面 prompt。
+
+检查结果：
+
+- `npm run typecheck`：通过。
+- `npm run build`：通过。
+
+下一步：
+
+- 可以进入 7B：在不接 OpenAI、不生成图片、不改页面的前提下，为书名和简介优化结果增加最小数据库保存能力。
+
+## Codex 指令 7B 书名和简介优化结果数据库保存
+
+更新时间：2026-05-24
+
+- 7B 已完成书名/简介生成结果数据库模型。
+- 新增 `WorkTitleIntroGeneration` 模型，用于保存书名建议、简介建议、封面 prompt、风险和证据。
+- `Work` 模型新增关系字段 `titleIntroGenerations WorkTitleIntroGeneration[]`。
+- `WorkIdentification` 模型新增关系字段 `titleIntroGenerations WorkTitleIntroGeneration[]`。
+- `WorkRating` 模型新增关系字段 `titleIntroGenerations WorkTitleIntroGeneration[]`。
+- 未修改 `Work`、`WorkIdentification`、`WorkRating` 已有业务字段。
+- 已执行 `npm exec -- prisma validate`：通过。
+- 已执行 `npm exec -- prisma generate`：通过，Prisma Client 已重新生成。
+- 已执行 `npm run db:push`：通过。本次只新增 `WorkTitleIntroGeneration` 表和索引，没有出现数据丢失警告。
+- 新增 `src/lib/generation/title-intro-repository.ts`，提供：
+  - `saveTitleIntroGeneration(params)`：保存生成结果。
+  - `getLatestTitleIntroGeneration(workId)`：读取最近一次生成结果。
+- 新增 `scripts/test-title-intro-db.cjs`。
+- `package.json` 新增 `npm run db:test-title-intro`。
+- 本阶段没有改页面。
+- 本阶段没有开发 API。
+- 本阶段没有接 OpenAI 或真实搜索。
+- 本阶段没有生成图片。
+- 本阶段没有运行 lint。
+- 本阶段没有使用 `node -e`。
+- 本阶段没有创建 Git commit。
+
+检查结果：
+
+- `npm run typecheck`：通过。
+- `npm run build`：通过。
+- `npm run db:test`：通过。
+- `npm run db:test-import`：通过。
+- `npm run db:test-rating`：通过。
+- `npm run db:test-title-intro`：通过。
+
+下一步：
+
+- 可以进入 7C：实现书名和简介优化生成 API。
+
+## Codex 指令 7C 书名和简介优化生成 API
+
+更新时间：2026-05-24
+
+- 7C 已完成书名和简介优化生成 API。
+- 新增 `POST /api/works/[id]/title-intro`，可运行 Mock 生成并保存结果。
+- 新增 `GET /api/works/[id]/title-intro`，可读取最近一次生成结果。
+- 新增 `docs/title-intro-api.md`。
+- POST API 会读取作品、最近一次 `WorkIdentification` 和最近一次 `WorkRating`。
+- 没有识别结果时使用空候选和低置信识别风险。
+- 没有评级结果时使用保守默认评级，并加入“尚未进行作品评级，生成建议置信度较低”风险。
+- 历史 JSON 字段解析失败时不会导致 API 崩溃，会返回空数组或空对象，并在 `risks` 中记录解析失败。
+- 本阶段没有修改 `prisma/schema.prisma`。
+- 本阶段没有运行 `db:push`。
+- 本阶段没有改页面 UI。
+- 本阶段没有改作品识别 API。
+- 本阶段没有改评级 API。
+- 本阶段没有接 OpenAI 或真实搜索。
+- 本阶段没有生成图片。
+- 本阶段没有运行 lint。
+- 本阶段没有使用 `node -e`。
+- 本阶段没有创建 Git commit。
+
+检查结果：
+
+- `npm run typecheck`：通过。
+- `npm run build`：通过。
+- `npm run db:test`：通过。
+- `npm run db:test-import`：通过。
+- `npm run db:test-rating`：通过。
+- `npm run db:test-title-intro`：通过。
+
+下一步：
+
+- 可以进入 7D：在作品详情页接入书名和简介优化结果展示与运行按钮。
+
+## Codex 指令 7D 作品详情页书名/简介优化 UI
+
+更新时间：2026-05-24
+
+- 7D 已完成作品详情页书名/简介优化 UI。
+- 新增 `src/app/works/[id]/work-title-intro-panel.tsx`。
+- 作品详情页已接入“书名和简介优化 Mock”区域。
+- 作品详情页可以调用 `GET /api/works/[id]/title-intro` 读取已有生成结果。
+- 作品详情页可以调用 `POST /api/works/[id]/title-intro` 运行书名/简介优化生成。
+- 页面可以展示：
+  - 当前生成状态
+  - 生成策略
+  - 策略说明
+  - 是否建议生成多书名方案
+  - 新书名方案列表
+  - 新版简介
+  - 封面 prompt 列表
+  - 风险点
+  - 证据说明
+- 页面会展示 GET/POST 失败、`success: false`、网络请求失败和 generation 字段缺失等错误。
+- 本阶段没有修改 `prisma/schema.prisma`。
+- 本阶段没有运行 `db:push`。
+- 本阶段没有修改 API。
+- 本阶段没有修改导入页、导入 API 或作品列表基础功能。
+- 本阶段没有接 OpenAI。
+- 本阶段没有接真实搜索 API。
+- 本阶段没有生成图片。
+- 本阶段没有开发图片生成 API。
+- 本阶段没有运行 lint。
+- 本阶段没有使用 `node -e`。
+- 本阶段没有创建 Git commit，等待阶段 7 手动测试通过后统一提交。
+
+检查结果：
+
+- `npm run typecheck`：通过。
+- `npm run build`：通过。
+- `npm run db:test`：通过。
+- `npm run db:test-import`：通过。
+- `npm run db:test-rating`：通过。
+- `npm run db:test-title-intro`：通过。
+
+下一步：
+
+- 可以手动运行 `npm run dev` 验证阶段 7：作品详情页书名/简介优化读取和生成流程。
+- 手动测试通过后，建议统一提交阶段 7。
+
+## Codex 指令 7 阶段归档
+
+更新时间：2026-05-24
+
+- 阶段 7 书名和简介优化 Mock 模块已完成。
+- 已手动测试通过。
+- 7A 书名/简介优化 Mock 纯函数完成。
+- 7B 生成结果数据库保存能力完成。
+- 7C 生成 API 完成。
+- 7D 生成 UI 完成。
+- `npm run typecheck`：通过。
+- `npm run build`：通过。
+- `npm run db:test`：通过。
+- `npm run db:test-import`：通过。
+- `npm run db:test-rating`：通过。
+- `npm run db:test-title-intro`：通过。
+- 阶段 7 未接 OpenAI。
+- 阶段 7 未接真实搜索 API。
+- 阶段 7 未生成图片。
