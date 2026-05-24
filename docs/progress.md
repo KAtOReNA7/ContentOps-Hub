@@ -1084,3 +1084,23 @@ Prisma 同步：
 - `npm run lint`：通过。
 - `npm run typecheck`：通过。
 - `npm run build`：通过。
+
+## 阶段 10：Excel 导出 V1
+
+更新时间：2026-05-24
+
+- 已新增 Excel 导出服务层 `src/lib/export/`，聚合 Work、最近一次识别、评级、书名简介生成、封面资产和封面评估结果。
+- 已新增 `GET /api/export/works`，支持导出全部作品。
+- 已新增 `GET /api/export/works/[id]`，支持导出单本作品。
+- 作品列表页已增加“导出全部作品 Excel”按钮。
+- 作品详情页已增加“导出当前作品 Excel”按钮。
+- 导出文件格式为 `.xlsx`，Sheet 名称为“作品运营建议”。
+- 缺失识别、评级、生成或封面评估结果时不会报错，对应字段留空。
+- JSON 字段解析失败时写入“解析失败”。
+- 本阶段未修改 Prisma schema，未接真实搜索 API，未接图片生成 API，未修改 OpenAI 文本生成逻辑。
+
+检查结果：
+- `npm run lint`：通过。
+- `npm run typecheck`：通过。
+- `npm run build`：通过。
+- `npm run db:test`：通过。

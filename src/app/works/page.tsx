@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ExportAllWorksButton } from "@/app/works/export-all-button";
 import { prisma } from "@/server/db";
 
 type WorksPageProps = {
@@ -56,6 +57,8 @@ export default async function WorksPage({ searchParams }: WorksPageProps) {
         <h1 className="text-2xl font-semibold text-stone-950">作品列表</h1>
         <p className="mt-2 text-stone-600">查看已入库作品，支持按书名、作者、品类筛选。</p>
       </div>
+
+      <ExportAllWorksButton />
 
       <form className="grid gap-3 rounded-lg border border-stone-200 bg-white p-4 md:grid-cols-4">
         <input

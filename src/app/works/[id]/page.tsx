@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { WorkCoverPanel } from "@/app/works/[id]/work-cover-panel";
+import { WorkExportButton } from "@/app/works/[id]/work-export-button";
 import { WorkIdentificationPanel, type WorkIdentificationView } from "@/app/works/[id]/work-identification-panel";
 import { WorkRatingPanel } from "@/app/works/[id]/work-rating-panel";
 import { WorkTitleIntroPanel } from "@/app/works/[id]/work-title-intro-panel";
@@ -50,6 +51,8 @@ export default async function WorkDetailPage({ params }: WorkDetailPageProps) {
         <h1 className="mt-3 text-2xl font-semibold text-stone-950">{work.title}</h1>
         <p className="mt-2 text-stone-600">作者：{work.author || "-"}</p>
       </div>
+
+      <WorkExportButton workId={work.id} />
 
       <section className="rounded-lg border border-stone-200 bg-white p-5">
         <h2 className="font-semibold text-stone-950">作品简介</h2>
