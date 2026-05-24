@@ -27,6 +27,8 @@ model Work {
   identifications WorkIdentification[]
   ratings         WorkRating[]
   titleIntroGenerations WorkTitleIntroGeneration[]
+  coverAssets     CoverAsset[]
+  coverEvaluations WorkCoverEvaluation[]
 }
 
 model AnalysisResult {
@@ -109,6 +111,47 @@ model WorkTitleIntroGeneration {
   @@index([workId])
   @@index([identificationId])
   @@index([ratingId])
+}
+
+model CoverAsset {
+  id           String   @id @default(cuid())
+  workId       String
+  fileName     String
+  originalName String
+  mimeType     String
+  sizeBytes    Int
+  storagePath  String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  work        Work @relation(fields: [workId], references: [id], onDelete: Cascade)
+  evaluations WorkCoverEvaluation[]
+
+  @@index([workId])
+}
+
+model WorkCoverEvaluation {
+  id                String   @id @default(cuid())
+  workId            String
+  coverAssetId      String?
+  score             Float
+  rating            String
+  strengthsJson     String
+  weaknessesJson    String
+  strategy          String
+  reason            String
+  confirmed         Boolean  @default(false)
+  confirmedStrategy String?
+  reviewNote        String?
+  confirmedAt       DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  work       Work        @relation(fields: [workId], references: [id], onDelete: Cascade)
+  coverAsset CoverAsset? @relation(fields: [coverAssetId], references: [id], onDelete: SetNull)
+
+  @@index([workId])
+  @@index([coverAssetId])
 }
 
 enum WorkStatus {

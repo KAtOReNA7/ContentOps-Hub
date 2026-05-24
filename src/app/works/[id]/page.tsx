@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { WorkCoverPanel } from "@/app/works/[id]/work-cover-panel";
 import { WorkIdentificationPanel, type WorkIdentificationView } from "@/app/works/[id]/work-identification-panel";
 import { WorkRatingPanel } from "@/app/works/[id]/work-rating-panel";
 import { WorkTitleIntroPanel } from "@/app/works/[id]/work-title-intro-panel";
@@ -97,6 +98,7 @@ export default async function WorkDetailPage({ params }: WorkDetailPageProps) {
       <WorkIdentificationPanel workId={work.id} initialIdentification={initialIdentification} />
       <WorkRatingPanel workId={work.id} />
       <WorkTitleIntroPanel workId={work.id} />
+      <WorkCoverPanel workId={work.id} />
     </div>
   );
 }
