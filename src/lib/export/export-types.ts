@@ -51,6 +51,8 @@ export type ExportWorkRow = {
   "封面是否人工确认 confirmed": string;
   "封面人工确认策略 confirmedStrategy": string;
   "封面人工备注 note": string;
+  "新版封面1:1地址": string;
+  "新版封面3:4地址": string;
   "导出时间 exportedAt": string;
 };
 

@@ -1123,3 +1123,31 @@ Prisma 同步：
 - 阶段 10 未接真实搜索 API。
 - 阶段 10 未接图片生成 API。
 - 阶段 10 未做原图换标题或重绘封面。
+
+## 阶段 11：原图换标题 / 版式优化
+
+更新时间：2026-05-24
+
+- 已新增 `WorkCoverRender` 模型，用于保存新版标题封面生成结果。
+- 已新增 `src/lib/cover-render/`，使用 `sharp` 做本地程序化图片合成。
+- 支持读取 `local_upload` 和 `remote_url` 两类封面资产。
+- 支持输出 `1:1` 和 `3:4` 两种 PNG 封面。
+- 已新增 `POST /api/works/[id]/cover/render`，用于生成新版标题封面。
+- 已新增 `GET /api/works/[id]/cover/render`，用于读取生成记录和可选新书名。
+- 已新增 `GET /api/cover-renders/[id]/file`，用于预览/下载生成图片。
+- 作品详情页“封面评估与处理建议”区域已接入生成入口、标题选择/手动输入、预览和下载。
+- Excel 导出已补充新版封面 `1:1`、`3:4` 预览地址字段。
+- 生成图片保存在 `uploads/cover-renders/{workId}/`，继续由 Git 忽略。
+- 本阶段未接图片生成 API，未调用 OpenAI 图片能力，未接真实搜索 API，未修改 OpenAI 文本生成逻辑，未修改封面评估逻辑。
+
+Prisma 同步：
+- `npm exec -- prisma validate`：通过。
+- `npm exec -- prisma generate`：通过。
+- `npm run db:push`：通过。本次只新增 `WorkCoverRender` 表和关系索引，未使用 destructive Prisma 命令。
+- `npm run db:test`：通过。
+
+检查结果：
+- `npm run lint`：通过。
+- `npm run typecheck`：通过。
+- `npm run build`：通过。
+- `npm run db:test`：通过。

@@ -26,6 +26,10 @@ const workInclude = {
     orderBy: { createdAt: "desc" },
     take: 1,
   },
+  coverRenders: {
+    orderBy: { createdAt: "desc" },
+    take: 8,
+  },
   identifications: {
     orderBy: { updatedAt: "desc" },
     take: 1,
@@ -76,6 +80,8 @@ function toExportRow(work: WorkForExport): ExportWorkRow {
   const generation = work.titleIntroGenerations[0] ?? null;
   const coverAsset = work.coverAssets[0] ?? null;
   const coverEvaluation = work.coverEvaluations[0] ?? null;
+  const latestSquareRender = work.coverRenders.find((render) => render.outputRatio === "1:1") ?? null;
+  const latestPortraitRender = work.coverRenders.find((render) => render.outputRatio === "3:4") ?? null;
   const finalMatchRaw = safeJsonParse<FinalMatch | string | null>(identification?.finalMatchJson, null);
   const finalMatch = typeof finalMatchRaw === "string" ? null : finalMatchRaw;
   const finalMatchParseError = typeof finalMatchRaw === "string" ? finalMatchRaw : "";
@@ -147,6 +153,8 @@ function toExportRow(work: WorkForExport): ExportWorkRow {
     "封面是否人工确认 confirmed": booleanLabel(coverEvaluation?.confirmed),
     "封面人工确认策略 confirmedStrategy": text(coverEvaluation?.confirmedStrategy),
     "封面人工备注 note": text(coverEvaluation?.reviewNote),
+    "新版封面1:1地址": latestSquareRender ? `/api/cover-renders/${latestSquareRender.id}/file` : "",
+    "新版封面3:4地址": latestPortraitRender ? `/api/cover-renders/${latestPortraitRender.id}/file` : "",
     "导出时间 exportedAt": exportedAt,
   };
 }

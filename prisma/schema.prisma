@@ -29,6 +29,7 @@ model Work {
   titleIntroGenerations WorkTitleIntroGeneration[]
   coverAssets     CoverAsset[]
   coverEvaluations WorkCoverEvaluation[]
+  coverRenders     WorkCoverRender[]
 }
 
 model AnalysisResult {
@@ -107,6 +108,7 @@ model WorkTitleIntroGeneration {
   work           Work                @relation(fields: [workId], references: [id], onDelete: Cascade)
   identification WorkIdentification? @relation(fields: [identificationId], references: [id], onDelete: SetNull)
   rating         WorkRating?         @relation(fields: [ratingId], references: [id], onDelete: SetNull)
+  coverRenders   WorkCoverRender[]
 
   @@index([workId])
   @@index([identificationId])
@@ -130,6 +132,7 @@ model CoverAsset {
 
   work        Work @relation(fields: [workId], references: [id], onDelete: Cascade)
   evaluations WorkCoverEvaluation[]
+  renders     WorkCoverRender[]
 
   @@index([workId])
 }
@@ -156,6 +159,30 @@ model WorkCoverEvaluation {
 
   @@index([workId])
   @@index([coverAssetId])
+}
+
+model WorkCoverRender {
+  id                    String   @id @default(cuid())
+  workId                String
+  coverAssetId          String
+  titleIntroGenerationId String?
+  titleText             String
+  strategy              String
+  outputRatio           String
+  outputPath            String
+  outputUrl             String?
+  status                String   @default("success")
+  errorMessage          String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  work                 Work                       @relation(fields: [workId], references: [id], onDelete: Cascade)
+  coverAsset           CoverAsset                 @relation(fields: [coverAssetId], references: [id], onDelete: Cascade)
+  titleIntroGeneration WorkTitleIntroGeneration?  @relation(fields: [titleIntroGenerationId], references: [id], onDelete: SetNull)
+
+  @@index([workId])
+  @@index([coverAssetId])
+  @@index([titleIntroGenerationId])
 }
 
 enum WorkStatus {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { WorkCoverRenderPanel } from "@/app/works/[id]/work-cover-render-panel";
 import type { CoverAssetView, CoverEvaluationView, CoverStrategy } from "@/lib/cover/cover-types";
 
 type CoverState = {
@@ -335,6 +336,7 @@ export function WorkCoverPanel({ workId }: WorkCoverPanelProps) {
                   </p>
                 ) : null}
               </div>
+              <WorkCoverRenderPanel evaluation={evaluation} workId={workId} />
             </div>
           ) : (
             <p className="rounded-md bg-stone-50 p-4 text-sm text-stone-600">
