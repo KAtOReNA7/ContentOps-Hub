@@ -1060,3 +1060,27 @@ Prisma 同步：
 - `npm exec -- prisma validate`：通过。
 - `npm exec -- prisma generate`：通过。
 - `npm run db:push`：通过。本次只新增封面相关表和索引，未出现数据丢失警告。
+
+## 阶段 9 补丁：导入封面图片地址
+
+更新时间：2026-05-24
+
+- 导入表格的封面字段现在兼容 `封面地址`、`封面URL`、`封面链接`、`封面文件名`、`coverUrl`、`cover_url`、`coverFileName`。
+- 如果封面字段值以 `http://` 或 `https://` 开头，导入 API 会自动创建 `CoverAsset`，`sourceType=remote_url`，并保存 `remoteUrl`。
+- 远程封面导入阶段不下载图片、不阻塞校验；作品详情页通过封面文件 API 代理预览。
+- 手动上传封面能力保留，`sourceType=local_upload`。
+- `CoverAsset` 已新增/调整 `sourceType`、`remoteUrl`、`status`、`errorMessage`，并允许 `storagePath` 对远程封面为空。
+- `cover-assets` 文件 API 已支持本地上传文件和远程 URL 两种来源；远程 URL 仅允许 http/https，阻止 localhost、127.0.0.1、0.0.0.0 和常见内网 IP 段，带 timeout、图片 MIME 校验和响应大小限制。
+- Mock 封面评估已记录封面来源，远程封面可直接运行评估。
+- 本阶段未接真实搜索 API，未接图片生成 API，未调用 OpenAI 视觉评估，未修改 OpenAI 文本生成逻辑。
+
+Prisma 同步：
+- `npm exec -- prisma validate`：通过。
+- `npm exec -- prisma generate`：通过。
+- `npm run db:push`：通过。本次只扩展 `CoverAsset` 字段，未使用 destructive Prisma 命令。
+- `npm run db:test`：通过。
+
+检查结果：
+- `npm run lint`：通过。
+- `npm run typecheck`：通过。
+- `npm run build`：通过。

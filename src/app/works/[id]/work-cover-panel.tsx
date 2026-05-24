@@ -235,8 +235,17 @@ export function WorkCoverPanel({ workId }: WorkCoverPanelProps) {
           {asset ? (
             <div className="rounded-md bg-stone-50 p-3 text-sm text-stone-600">
               <p className="break-all font-medium text-stone-950">{asset.originalName}</p>
-              <p className="mt-1">格式：{asset.mimeType}</p>
-              <p>大小：{formatFileSize(asset.sizeBytes)}</p>
+              <p className="mt-1">来源：{asset.sourceType === "remote_url" ? "来自导入表格" : "本地手动上传"}</p>
+              <p>格式：{asset.mimeType}</p>
+              <p>大小：{asset.sizeBytes > 0 ? formatFileSize(asset.sizeBytes) : "远程图片暂未下载"}</p>
+              {asset.status === "error" ? (
+                <p className="mt-2 rounded-md bg-red-50 px-2 py-1 text-red-700">
+                  远程封面加载失败，可手动上传替换封面。{asset.errorMessage ? `原因：${asset.errorMessage}` : ""}
+                </p>
+              ) : null}
+              {asset.sourceType === "remote_url" ? (
+                <p className="mt-2 text-stone-500">远程封面不在导入阶段下载，预览失败时可使用手动上传替换。</p>
+              ) : null}
             </div>
           ) : null}
         </div>

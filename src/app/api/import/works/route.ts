@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { validateImportRows, type RawImportRow } from "@/lib/import/validation";
+import { isRemoteCoverUrl, validateImportRows, type RawImportRow } from "@/lib/import/validation";
 import { prisma } from "@/server/db";
 
 export const runtime = "nodejs";
@@ -49,13 +49,16 @@ export async function POST(request: Request) {
         continue;
       }
 
-      await prisma.work.create({
+      const remoteCoverUrl = isRemoteCoverUrl(row.coverFileName) ? row.coverFileName.trim() : "";
+      const remoteCoverOriginalName = remoteCoverUrl ? originalNameFromRemoteCoverUrl(remoteCoverUrl, row.externalId) : "";
+      const savedWork = await prisma.work.create({
         data: {
           externalId: row.externalId,
           title: row.title,
           author: row.author,
           description: row.description,
-          coverFileName: row.coverFileName || null,
+          coverUrl: remoteCoverUrl || null,
+          coverFileName: remoteCoverOriginalName || row.coverFileName || null,
           category: row.category || null,
           currentPlays: row.currentPlays,
           currentCtr: row.currentCtr,
@@ -67,6 +70,23 @@ export async function POST(request: Request) {
           id: true,
         },
       });
+
+      if (remoteCoverUrl) {
+        await prisma.coverAsset.create({
+          data: {
+            workId: savedWork.id,
+            fileName: remoteCoverOriginalName,
+            originalName: remoteCoverOriginalName,
+            mimeType: inferMimeTypeFromRemoteCoverUrl(remoteCoverUrl),
+            sizeBytes: 0,
+            storagePath: null,
+            sourceType: "remote_url",
+            remoteUrl: remoteCoverUrl,
+            status: "unchecked",
+            errorMessage: null,
+          },
+        });
+      }
 
       created += 1;
     }
@@ -95,4 +115,39 @@ export async function POST(request: Request) {
       { status: 500 },
     );
   }
+}
+
+function originalNameFromRemoteCoverUrl(remoteUrl: string, fallbackId: string): string {
+  try {
+    const pathname = new URL(remoteUrl).pathname;
+    const fileName = decodeURIComponent(pathname.split("/").filter(Boolean).at(-1) ?? "");
+
+    if (fileName) {
+      return sanitizeRemoteFileName(fileName);
+    }
+  } catch {
+    // Fall through to deterministic fallback.
+  }
+
+  return `cover-${sanitizeRemoteFileName(fallbackId || "work")}-${Date.now()}.jpg`;
+}
+
+function sanitizeRemoteFileName(value: string): string {
+  return value.replace(/[\\/:*?"<>|]/g, "_").slice(0, 180) || "cover.jpg";
+}
+
+function inferMimeTypeFromRemoteCoverUrl(remoteUrl: string): string {
+  const pathname = (() => {
+    try {
+      return new URL(remoteUrl).pathname.toLowerCase();
+    } catch {
+      return "";
+    }
+  })();
+
+  if (pathname.endsWith(".png")) return "image/png";
+  if (pathname.endsWith(".webp")) return "image/webp";
+  if (pathname.endsWith(".gif")) return "image/gif";
+
+  return "image/jpeg";
 }

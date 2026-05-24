@@ -6,13 +6,20 @@ type EvaluateCoverInput = {
     category: string | null;
     coverFileName: string | null;
   };
-  asset: Pick<CoverAssetView, "fileName" | "originalName" | "mimeType" | "sizeBytes">;
+  asset: Pick<CoverAssetView, "fileName" | "originalName" | "mimeType" | "sizeBytes" | "sourceType">;
 };
 
 export function evaluateCoverWithMock({ work, asset }: EvaluateCoverInput): CoverEvaluationResult {
   const strengths: string[] = [];
   const weaknesses: string[] = [];
   let score = 52;
+
+  if (asset.sourceType === "remote_url") {
+    strengths.push("封面来源为导入表格中的远程图片地址，可直接用于当前 MVP 预览和评估。");
+    weaknesses.push("远程封面未在导入阶段下载或校验，仍需人工确认图片是否可访问且与作品匹配。");
+  } else {
+    strengths.push("封面来源为本地手动上传，文件已保存到本地 uploads 目录。");
+  }
 
   if (asset.mimeType === "image/webp" || asset.mimeType === "image/png") {
     score += 10;
@@ -25,7 +32,9 @@ export function evaluateCoverWithMock({ work, asset }: EvaluateCoverInput): Cove
     weaknesses.push("图片格式不在推荐范围内");
   }
 
-  if (asset.sizeBytes >= 180_000 && asset.sizeBytes <= 2_500_000) {
+  if (asset.sourceType === "remote_url" && asset.sizeBytes <= 0) {
+    strengths.push("远程封面暂不依赖文件体积评分，避免导入阶段阻塞式下载图片。");
+  } else if (asset.sizeBytes >= 180_000 && asset.sizeBytes <= 2_500_000) {
     score += 14;
     strengths.push("文件体积处于较合理范围，推测清晰度可用");
   } else if (asset.sizeBytes < 80_000) {

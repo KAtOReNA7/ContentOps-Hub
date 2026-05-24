@@ -120,7 +120,11 @@ model CoverAsset {
   originalName String
   mimeType     String
   sizeBytes    Int
-  storagePath  String
+  storagePath  String?
+  sourceType   String   @default("local_upload")
+  remoteUrl    String?
+  status       String   @default("available")
+  errorMessage String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 

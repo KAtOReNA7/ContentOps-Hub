@@ -27,12 +27,38 @@ export type DuplicateKeySet = {
   titleAuthorKeys?: Set<string>;
 };
 
+const coverColumnAliases = [
+  "封面地址",
+  "封面URL",
+  "封面链接",
+  "封面文件名",
+  "coverUrl",
+  "cover_url",
+  "coverFileName",
+];
+
 function cellToString(value: unknown): string {
   if (value === null || value === undefined) {
     return "";
   }
 
   return String(value).trim();
+}
+
+function cellByAliases(raw: RawImportRow, aliases: string[]): string {
+  for (const alias of aliases) {
+    const value = cellToString(raw[alias]);
+
+    if (value) {
+      return value;
+    }
+  }
+
+  return "";
+}
+
+export function isRemoteCoverUrl(value: string): boolean {
+  return /^https?:\/\//i.test(value.trim());
 }
 
 function parseInteger(value: unknown): number | null {
@@ -82,7 +108,7 @@ export function normalizeImportRow(raw: RawImportRow, index: number): Normalized
     title: cellToString(raw["原书名"]),
     author: cellToString(raw["作者名"]),
     description: cellToString(raw["原简介"]),
-    coverFileName: cellToString(raw["封面文件名"]),
+    coverFileName: cellByAliases(raw, coverColumnAliases),
     category: cellToString(raw["品类"]),
     currentPlays: parseInteger(raw["当前播放量"]),
     currentCtr: parseRate(raw["当前点击率"]),

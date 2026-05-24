@@ -1,5 +1,12 @@
 import type { CoverAsset, WorkCoverEvaluation } from "@prisma/client";
-import type { CoverAssetView, CoverEvaluationResult, CoverEvaluationView, CoverStrategy } from "@/lib/cover/cover-types";
+import type {
+  CoverAssetSourceType,
+  CoverAssetStatus,
+  CoverAssetView,
+  CoverEvaluationResult,
+  CoverEvaluationView,
+  CoverStrategy,
+} from "@/lib/cover/cover-types";
 import { prisma } from "@/server/db";
 
 export function toCoverAssetView(asset: CoverAsset): CoverAssetView {
@@ -9,6 +16,10 @@ export function toCoverAssetView(asset: CoverAsset): CoverAssetView {
     originalName: asset.originalName,
     mimeType: asset.mimeType,
     sizeBytes: asset.sizeBytes,
+    sourceType: normalizeSourceType(asset.sourceType),
+    remoteUrl: asset.remoteUrl,
+    status: normalizeAssetStatus(asset.status),
+    errorMessage: asset.errorMessage,
     url: `/api/cover-assets/${asset.id}/file`,
     createdAt: asset.createdAt.toISOString(),
   };
@@ -75,6 +86,18 @@ export function normalizeStrategy(value: string): CoverStrategy {
 
 function normalizeRating(value: string): "A" | "B" | "C" | "D" {
   return value === "A" || value === "B" || value === "C" || value === "D" ? value : "C";
+}
+
+function normalizeSourceType(value: string): CoverAssetSourceType {
+  return value === "remote_url" ? "remote_url" : "local_upload";
+}
+
+function normalizeAssetStatus(value: string): CoverAssetStatus {
+  if (value === "unchecked" || value === "available" || value === "error") {
+    return value;
+  }
+
+  return "available";
 }
 
 function safeJsonParse<T>(value: string, fallback: T): T {

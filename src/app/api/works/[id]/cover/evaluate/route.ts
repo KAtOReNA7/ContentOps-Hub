@@ -53,6 +53,7 @@ export async function POST(_request: Request, { params }: CoverEvaluateRouteProp
         originalName: asset.originalName,
         mimeType: asset.mimeType,
         sizeBytes: asset.sizeBytes,
+        sourceType: asset.sourceType === "remote_url" ? "remote_url" : "local_upload",
       },
     });
     const saved = await saveCoverEvaluation(id, asset.id, result);

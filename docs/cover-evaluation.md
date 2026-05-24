@@ -80,3 +80,15 @@
 - 不做批量封面处理。
 
 后续如果进入图片生成阶段，应继续保留当前策略判断作为前置审核，避免默认批量生成图片造成成本失控。
+
+## 导入封面 URL 支持
+
+更新时间：2026-05-24
+
+- `CoverAsset` 支持两类来源：`local_upload` 和 `remote_url`。
+- `local_upload` 表示作品详情页手动上传的本地封面文件，继续使用 `storagePath`。
+- `remote_url` 表示从导入表格读取的远程图片地址，保存 `remoteUrl`，`storagePath` 可以为空。
+- 导入阶段不会下载远程图片，也不会批量校验远程图片，避免拖慢导入流程。
+- 作品详情页通过 `/api/cover-assets/{id}/file` 代理预览远程封面。
+- 远程封面代理只允许 http/https，阻止 localhost、127.0.0.1、0.0.0.0 和常见内网 IP 段，并限制 timeout、content-type 和响应体大小。
+- Mock 封面评估会记录封面来源，但当前不做 OpenAI 视觉评估，也不生成图片。

@@ -81,6 +81,10 @@ export async function POST(request: Request, { params }: CoverRouteProps) {
         mimeType: file.type,
         sizeBytes: file.size,
         storagePath,
+        sourceType: "local_upload",
+        remoteUrl: null,
+        status: "available",
+        errorMessage: null,
       },
     });
 
