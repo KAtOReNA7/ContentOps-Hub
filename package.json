@@ -12,13 +12,19 @@
     "db:test-import": "node scripts/test-import-db.cjs",
     "db:test-rating": "node scripts/test-rating-db.cjs",
     "db:test-title-intro": "node scripts/test-title-intro-db.cjs",
+    "test:openai-text": "node scripts/test-openai-text.cjs",
+    "test:openai-title-intro": "node scripts/test-openai-title-intro-adapter.cjs",
     "db:studio": "prisma studio"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",
     "next": "latest",
+    "node-fetch": "^2.7.0",
+    "openai": "^6.39.0",
     "react": "latest",
     "react-dom": "latest",
+    "socks-proxy-agent": "^10.0.0",
+    "undici": "^8.3.0",
     "xlsx": "^0.18.5",
     "zod": "latest"
   },

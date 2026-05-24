@@ -741,3 +741,297 @@ Prisma / SQLite 状态：
 - 阶段 7 未接 OpenAI。
 - 阶段 7 未接真实搜索 API。
 - 阶段 7 未生成图片。
+
+## Codex 指令 8A OpenAI 文本生成 Adapter
+
+更新时间：2026-05-24
+
+- 8A 已完成 OpenAI 文本生成 Adapter。
+- 已新增 `openai` SDK 依赖，用于后续通过 OpenAI Responses API 生成书名、简介和封面 prompt 文本。
+- 已更新 `.env.example`：
+  - `OPENAI_API_KEY`
+  - `OPENAI_TEXT_MODEL`
+- 已新增 OpenAI 结构化输出 JSON Schema。
+- 已新增运行时结构校验，OpenAI 输出必须通过 schema 校验后才能作为 `TitleIntroGenerationResult` 使用。
+- 本阶段没有修改 `prisma/schema.prisma`。
+- 本阶段没有修改 `POST /api/works/[id]/title-intro` 和 `GET /api/works/[id]/title-intro` 的默认行为。
+- 本阶段没有修改页面 UI。
+- 本阶段没有调用真实 OpenAI API。
+- 本阶段没有生成图片。
+- 本阶段没有运行 `db:push`。
+- 本阶段没有运行 lint。
+- 本阶段没有使用 `node -e`。
+
+检查结果：
+
+- `npm run typecheck`：通过。
+- `npm run build`：通过。
+
+下一步：
+
+- 检查通过后，可以进入 8B：让生成 API 支持 Mock / OpenAI 切换，但默认仍应保持 Mock。
+
+## Codex 指令 8B title-intro API provider 切换
+
+更新时间：2026-05-24
+
+- 8B 已完成 `title-intro` API provider 切换。
+- `POST /api/works/[id]/title-intro` 支持 `mock` / `openai`。
+- 请求体为空或未传 `provider` 时，默认 provider 仍是 `mock`。
+- `provider=mock` 时继续使用 Mock 规则引擎。
+- `provider=openai` 时调用 OpenAI 文本生成 Adapter。
+- OpenAI 分支会检查 `OPENAI_API_KEY` 和 `OPENAI_TEXT_MODEL`，缺失时返回结构化错误，不会泄露 API key。
+- 生成结果仍使用 `saveTitleIntroGeneration(params)` 保存。
+- `GET /api/works/[id]/title-intro` 保持原逻辑，不需要 provider。
+- 本阶段没有修改页面 UI。
+- 本阶段没有修改 `prisma/schema.prisma`。
+- 本阶段没有运行 `db:push`。
+- 本阶段没有真实调用 OpenAI API。
+- 本阶段没有生成图片，也没有接图片生成 API。
+- 本阶段没有运行 lint。
+- 本阶段没有使用 `node -e`。
+
+检查结果：
+
+- `npm run typecheck`：通过。
+- `npm run build`：通过。
+- `npm run db:test`：通过。
+- `npm run db:test-import`：通过。
+- `npm run db:test-rating`：通过。
+- `npm run db:test-title-intro`：通过。
+
+下一步：
+
+- 可以进入 8C：在不改变默认 Mock 行为的前提下，增加手动验证 OpenAI 文本生成的入口或测试说明。
+
+## Codex 指令 8C 作品详情页生成 provider 选择
+
+更新时间：2026-05-24
+
+- 8C 已完成作品详情页书名/简介优化区域 provider 选择。
+- 页面默认使用 `Mock 规则引擎`。
+- 页面可选择 `OpenAI 文本生成`。
+- OpenAI 只在用户主动选择后点击生成时调用。
+- 前端不会读取或展示 API key，也不会提供 API key 输入表单。
+- 页面会展示 OpenAI 环境变量缺失、调用失败、输出结构校验失败、网络失败和 `success: false` 等错误。
+- 本阶段没有修改 `prisma/schema.prisma`。
+- 本阶段没有修改 `title-intro` API。
+- 本阶段没有运行 `db:push`。
+- 本阶段没有真实调用 OpenAI API。
+- 本阶段没有接图片生成 API，也没有生成图片。
+- 本阶段没有运行 lint。
+- 本阶段没有使用 `node -e`。
+
+检查结果：
+
+- `npm run typecheck`：通过。
+- `npm run build`：通过。
+- `npm run db:test`：通过。
+- `npm run db:test-import`：通过。
+- `npm run db:test-rating`：通过。
+- `npm run db:test-title-intro`：通过。
+
+下一步：
+
+- 可以进入 8D。
+
+## Codex 指令 8D 阶段 8 收尾检查
+
+更新时间：2026-05-24
+
+- 8D 已完成阶段 8 收尾检查。
+- 已确认代码中没有写死真实 `OPENAI_API_KEY`。
+- 已确认 `.env.example` 不包含真实 API key，并包含：
+  - `OPENAI_API_KEY`
+  - `OPENAI_TEXT_MODEL`
+- 已确认前端不读取、不展示、不提交 API key。
+- 已确认 API key 只在服务端 Adapter / API 路由中使用。
+- 已确认错误返回不会包含真实 API key。
+- 已确认没有 `console.log` / `console.error` 打印 API key。
+- 已确认 `.gitignore` 忽略 `.env`、`.env.local`、`.env.*.local`。
+- 已完善 `docs/openai-text-generation.md`，补充 `.env.local` 配置、重启开发服务、费用提醒和手动测试流程。
+- 已完善 `docs/title-intro-api.md`，补充 provider 请求体示例、默认 Mock、OpenAI 错误返回和 GET 行为说明。
+- 本阶段没有修改 `prisma/schema.prisma`。
+- 本阶段没有运行 `db:push`。
+- 本阶段没有真实调用 OpenAI API。
+- 本阶段没有接图片生成 API，也没有生成图片。
+- 本阶段没有运行 lint。
+- 本阶段没有使用 `node -e`。
+
+检查结果：
+
+- `npm run typecheck`：通过。
+- `npm run build`：通过。
+- `npm run db:test`：通过。
+- `npm run db:test-import`：通过。
+- `npm run db:test-rating`：通过。
+- `npm run db:test-title-intro`：通过。
+
+下一步：
+
+- 可以手动测试 OpenAI provider。
+- 手动测试通过后，建议统一提交阶段 8。
+
+## OpenAI provider timeout 诊断修复
+
+更新时间：2026-05-24
+
+- 已修复 OpenAI provider timeout 诊断。
+- 新增 `OPENAI_TIMEOUT_MS`，默认值为 `90000`。
+- OpenAI Adapter 现在使用 `OPENAI_TIMEOUT_MS` 配置 SDK timeout。
+- timeout 错误会返回 HTTP 504，并显示：
+  - `OpenAI request timed out`
+  - 当前 timeout 毫秒数
+  - 网络、代理、模型延迟或更快模型的排查建议
+- 新增 `scripts/test-openai-text.cjs`。
+- 新增 `npm run test:openai-text`，用于手动测试 OpenAI Responses API 文本链路。
+- 本次没有执行 `npm run test:openai-text`，没有真实调用 OpenAI API。
+- 已确认不会打印或暴露 API key。
+- 已确认 `.gitignore` 继续忽略 `.env`、`.env.local`、`.env.*.local`。
+- 已更新 `.env.example`，包含：
+  - `OPENAI_API_KEY`
+  - `OPENAI_TEXT_MODEL`
+  - `OPENAI_TIMEOUT_MS=90000`
+- 已更新 `docs/openai-text-generation.md`，补充低延迟模型、timeout 排查和轻量测试脚本说明。
+- 已更新 `docs/title-intro-api.md`，补充 OpenAI timeout 返回说明。
+- 本阶段没有修改 `prisma/schema.prisma`。
+- 本阶段没有运行 `db:push`。
+- 本阶段没有运行 lint。
+- 本阶段没有使用 `node -e`。
+
+检查结果：
+
+- `npm run typecheck`：通过。
+- `npm run build`：通过。
+
+## OpenAI provider 代理支持修复
+
+更新时间：2026-05-24
+
+- 已新增 `OPENAI_PROXY_URL` 支持。
+- 支持代理协议：
+  - `http://`
+  - `https://`
+  - `socks5://`
+  - `socks5h://`
+- 已确认 v2rayN SOCKS 代理可配置为 `OPENAI_PROXY_URL=socks5h://127.0.0.1:10808`。
+- 已新增 `socks-proxy-agent`，用于 SOCKS 代理。
+- 已新增 `undici`，用于 HTTP/HTTPS 代理 `ProxyAgent`。
+- 已新增 `node-fetch@2`，用于让 SOCKS Agent 在 OpenAI SDK 自定义 fetch 中生效。
+- `scripts/test-openai-text.cjs` 已支持输出：
+  - `model`
+  - `timeoutMs`
+  - `usingProxy`
+  - `proxyProtocol`
+  - `elapsedMs`
+- `openai-title-intro-adapter.ts` 已使用同一套代理创建逻辑。
+- timeout 错误会返回 `usingProxy`、`proxyProtocol`，并建议检查 `OPENAI_PROXY_URL`。
+- 本次没有执行 `npm run test:openai-text`，没有真实调用 OpenAI API。
+- 本阶段没有修改 `prisma/schema.prisma`。
+- 本阶段没有运行 `db:push`。
+- 本阶段没有运行 lint。
+- 本阶段没有使用 `node -e`。
+
+检查结果：
+
+- `npm run typecheck`：通过。
+- `npm run build`：通过。
+# OpenAI 页面 provider 代理链路修复
+
+更新时间：2026-05-24
+
+- 已确认开发者手动执行 `npm run test:openai-text` 成功，输出显示 `usingProxy: true`、`proxyProtocol: socks5h`、模型为 `gpt-5.4-mini`。
+- 页面选择 OpenAI provider 时曾返回 `Connection error.`，错误信息不足以确认 API route 实际使用的代理配置。
+- 已修复 `openai-title-intro-adapter.ts` 的 OpenAI 请求错误封装：非 timeout 的 OpenAI 请求失败会携带 `errorName`、`errorMessage`、`timeoutMs`、`usingProxy`、`proxyProtocol`、`model`、`status`、`code` 等非敏感诊断信息。
+- 已修复 `POST /api/works/[id]/title-intro` 的 OpenAI 错误返回：页面现在可以看到代理协议、timeout、模型和排查提示，不会只显示 `Connection error.`。
+- OpenAI Adapter 继续使用与测试脚本等价的 `OPENAI_PROXY_URL` 处理逻辑，支持 `http://`、`https://`、`socks5://`、`socks5h://`。
+- 当前可用本地代理配置为 `OPENAI_PROXY_URL=socks5h://127.0.0.1:10808`。
+- 已确认 `src/app/api/works/[id]/title-intro/route.ts` 使用 `export const runtime = "nodejs";`。
+- 已补充 `docs/openai-text-generation.md`：`test:openai-text` 成功只证明脚本链路可用；页面失败时需确认 Adapter 与脚本使用一致代理逻辑，并在修改 `.env.local` 后重启 `npm run dev`。
+- 本阶段没有读取、打印或暴露 `OPENAI_API_KEY`。
+- 本阶段没有修改 `prisma/schema.prisma`，没有运行 `db:push`，没有真实调用 OpenAI API，没有创建 Git commit。
+
+检查结果：
+
+- `npm run typecheck`：通过。
+- `npm run build`：通过。
+# OpenAI client 共享工厂修复
+
+更新时间：2026-05-24
+
+- 开发者已确认 `npm run test:openai-text` 成功，但页面 OpenAI provider 仍返回 `Connection error.`。
+- 已新增共享 OpenAI client 工厂 `src/lib/generation/llm/openai-client.cjs`。
+- `scripts/test-openai-text.cjs` 已改为复用共享 client 工厂，不再单独创建 OpenAI client 或代理 agent。
+- `src/lib/generation/llm/openai-title-intro-adapter.ts` 已改为复用共享 client 工厂，不再单独创建 OpenAI client 或代理 agent。
+- 共享 client 工厂支持 `http://`、`https://`、`socks5://`、`socks5h://`，当前本地可用配置为 `OPENAI_PROXY_URL=socks5h://127.0.0.1:10808`。
+- 已新增 `scripts/test-openai-title-intro-adapter.cjs` 和 `npm run test:openai-title-intro`，用于手动测试与页面 title-intro OpenAI 生成一致的 client / proxy 链路。
+- 本阶段没有读取、打印、提交或暴露 `OPENAI_API_KEY`。
+- 本阶段没有修改 `prisma/schema.prisma`，没有运行 `db:push`，没有真实调用 OpenAI API，没有创建 Git commit。
+
+检查结果：
+
+- `npm run typecheck`：通过。
+- `npm run build`：失败。失败点是 `prisma generate` 在 Windows 上替换 `node_modules/.prisma/client/query_engine-windows.dll.node` 时返回 `EPERM`，疑似本地 dev server 或 Node/Prisma 进程占用 Prisma engine DLL；未进入 Next 编译阶段。
+- `npx next build`：通过。说明 Next 代码编译和共享 CJS client 工厂打包通过，`npm run build` 当前失败原因集中在 Prisma Client 生成阶段的 Windows 文件占用。
+# OpenAI title-intro Connection error 诊断增强
+
+更新时间：2026-05-24
+
+- 页面 OpenAI provider 仍返回 `Connection error.`，但代理诊断显示 `usingProxy=true`、`proxyProtocol=socks5h`、`timeoutMs=90000`、`model=gpt-5.4-mini`。
+- 已为 `generateTitleIntroWithOpenAI` 增加 `max_output_tokens` 限制，默认读取 `OPENAI_TITLE_INTRO_MAX_OUTPUT_TOKENS`，未配置时使用 `1200`，避免业务生成请求输出过大。
+- 已增强 OpenAI 请求错误诊断：结构化错误中可返回非敏感的 `causeName`、`causeCode`、`causeMessage`，用于定位底层 fetch / 代理 / 连接问题。
+- 已更新 `.env.example` 和 `docs/openai-text-generation.md`，新增 `OPENAI_TITLE_INTRO_MAX_OUTPUT_TOKENS=1200` 说明。
+- 本阶段没有读取、打印、提交或暴露 `OPENAI_API_KEY`。
+- 本阶段没有修改 `prisma/schema.prisma`，没有运行 `db:push`，没有创建 Git commit。
+
+检查结果：
+
+- `npm run typecheck`：通过。
+- `npx next build`：通过。
+# OpenAI SOCKS fetch 兼容修复
+
+更新时间：2026-05-24
+
+- 页面 OpenAI provider 返回的底层 cause 已定位为 `TypeError: nodeFetch is not a function`。
+- 根因是 Next/Node 混合加载下 `require("node-fetch")` 可能返回模块对象而不是函数。
+- 已修复 `src/lib/generation/llm/openai-client.cjs`：兼容 `node-fetch` 的 CommonJS 函数导出和 `{ default: fetch }` 导出。
+- 本阶段没有读取、打印、提交或暴露 `OPENAI_API_KEY`。
+- 本阶段没有修改 `prisma/schema.prisma`，没有运行 `db:push`，没有真实调用 OpenAI API，没有创建 Git commit。
+
+检查结果：
+
+- `npm run typecheck`：通过。
+- `npx next build`：通过。
+# OpenAI title-intro JSON 截断修复
+
+更新时间：2026-05-24
+
+- 页面 OpenAI provider 已能连通并返回内容，但失败于 JSON 解析：`Unterminated string in JSON`。
+- 判断原因为 `OPENAI_TITLE_INTRO_MAX_OUTPUT_TOKENS=1200` 过低，结构化 JSON 输出被截断。
+- 已将默认 `OPENAI_TITLE_INTRO_MAX_OUTPUT_TOKENS` 从 `1200` 调整为 `3000`。
+- 已增强 JSON 解析失败提示：提示可能是输出被截断，并建议增大 `OPENAI_TITLE_INTRO_MAX_OUTPUT_TOKENS` 或缩短生成内容。
+- 本阶段没有读取、打印、提交或暴露 `OPENAI_API_KEY`。
+- 本阶段没有修改 `prisma/schema.prisma`，没有运行 `db:push`，没有真实调用 OpenAI API，没有创建 Git commit。
+
+检查结果：
+
+- `npm run typecheck`：通过。
+- `npx next build`：通过。
+## 阶段 8 OpenAI 文本生成归档
+
+更新时间：2026-05-24
+
+- 阶段 8 OpenAI 文本生成已完成。
+- 页面 OpenAI provider 已手动测试成功。
+- npm run lint：通过。
+- npm run typecheck：通过。
+- npm run build：通过。
+- npm run test:openai-text：通过。
+- npm run test:openai-title-intro：通过。
+- 默认 provider 仍为 mock。
+- OpenAI 仅在用户主动选择 provider=openai 时调用。
+- API key 未写入代码。
+- .env / .env.local 未提交。
+- 阶段 8 未接真实搜索 API。
+- 阶段 8 未接图片生成 API。
+- 阶段 8 未做导出功能。

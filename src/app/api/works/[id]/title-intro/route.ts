@@ -1,11 +1,18 @@
 import { NextResponse } from "next/server";
+
 import type { CandidateWork, FinalMatch } from "@/lib/adapters/search-adapter";
+import {
+  OpenAITitleIntroRequestError,
+  OpenAITitleIntroTimeoutError,
+  generateTitleIntroWithOpenAI,
+} from "@/lib/generation/llm/openai-title-intro-adapter";
 import { generateTitleIntroSuggestions } from "@/lib/generation/title-intro-engine";
 import { getLatestTitleIntroGeneration, saveTitleIntroGeneration } from "@/lib/generation/title-intro-repository";
 import type {
   CoverPromptSuggestion,
   IntroVariantSuggestion,
   TitleIntroGenerationInput,
+  TitleIntroGenerationResult,
   TitleVariantSuggestion,
 } from "@/lib/generation/title-intro-types";
 import type { RatingResult, RenameSuggestion, WorkRating } from "@/lib/rating/rating-types";
@@ -17,26 +24,36 @@ type TitleIntroRouteProps = {
   params: Promise<{ id: string }>;
 };
 
+type GenerationProvider = "mock" | "openai";
+
 type ParseResult<T> = {
   value: T;
   risks: string[];
 };
 
+type ProviderParseResult =
+  | {
+      provider: GenerationProvider;
+      error: null;
+    }
+  | {
+      provider: null;
+      error: {
+        status: number;
+        message: string;
+        errors: string[];
+      };
+    };
+
 export async function POST(request: Request, { params }: TitleIntroRouteProps) {
   try {
-    const bodyParseError = await parseOptionalRequestJson(request);
+    const providerParse = await parseGenerationProvider(request);
 
-    if (bodyParseError) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "请求体 JSON 格式异常",
-          errors: [bodyParseError],
-        },
-        { status: 400 },
-      );
+    if (providerParse.error) {
+      return structuredError(providerParse.error.message, providerParse.error.errors, providerParse.error.status);
     }
 
+    const provider = providerParse.provider;
     const { id } = await params;
     const work = await prisma.work.findUnique({
       where: { id },
@@ -53,65 +70,35 @@ export async function POST(request: Request, { params }: TitleIntroRouteProps) {
     });
 
     if (!work) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "作品不存在",
-          errors: ["未找到对应作品"],
-        },
-        { status: 404 },
-      );
+      return structuredError("Work not found.", ["No work exists for the provided id."], 404);
     }
 
     const latestIdentification = work.identifications[0] ?? null;
     const latestRating = work.ratings[0] ?? null;
     const identification = parseIdentification(latestIdentification);
     const rating = parseRating(latestRating);
-    const input: TitleIntroGenerationInput = {
-      work: {
-        id: work.id,
-        title: work.title || "",
-        author: work.author || "",
-        intro: work.description || "",
-        category: work.category || "",
-        coverFileName: work.coverFileName || "",
-        remark: work.notes || "",
-        playCount: work.currentPlays ?? null,
-        clickRate: work.currentCtr ?? null,
-        completionRate: work.currentFinish ?? null,
-      },
-      identification: identification.value,
-      rating: rating.value,
-    };
-
-    const result = generateTitleIntroSuggestions(input);
-    const resultWithRisks = {
-      ...result,
-      risks: Array.from(new Set([...result.risks, ...identification.risks, ...rating.risks])),
-    };
+    const input = buildGenerationInput(work, identification.value, rating.value);
+    const result = await runGenerationProvider(provider, input);
+    const resultWithContext = appendGenerationContext(result, provider, identification.risks, rating.risks);
     const saved = await saveTitleIntroGeneration({
       workId: work.id,
       identificationId: latestIdentification?.id ?? null,
       ratingId: latestRating?.id ?? null,
-      result: resultWithRisks,
+      result: resultWithContext,
     });
 
     return NextResponse.json({
       success: true,
       data: {
         generationId: saved.id,
-        ...resultWithRisks,
+        provider,
+        ...resultWithContext,
       },
     });
   } catch (error) {
-    return NextResponse.json(
-      {
-        success: false,
-        message: "书名和简介优化生成失败",
-        errors: [error instanceof Error ? error.message : "未知错误"],
-      },
-      { status: 500 },
-    );
+    const mappedError = mapGenerationError(error);
+
+    return structuredError(mappedError.message, mappedError.errors, mappedError.status);
   }
 }
 
@@ -129,7 +116,7 @@ export async function GET(_request: Request, { params }: TitleIntroRouteProps) {
 
     const risks: string[] = [];
     const titleVariants = safeJsonParse<TitleVariantSuggestion[]>(generation.titleVariantsJson, [], () =>
-      risks.push("历史生成结果解析失败：titleVariantsJson"),
+      risks.push("Failed to parse titleVariantsJson from stored generation."),
     );
     const introVariant = safeJsonParse<IntroVariantSuggestion>(
       generation.introVariantJson,
@@ -137,18 +124,18 @@ export async function GET(_request: Request, { params }: TitleIntroRouteProps) {
         intro: "",
         reason: "",
         styleTag: "",
-        risk: "历史生成结果解析失败",
+        risk: "Failed to parse stored intro variant.",
       },
-      () => risks.push("历史生成结果解析失败：introVariantJson"),
+      () => risks.push("Failed to parse introVariantJson from stored generation."),
     );
     const coverPrompts = safeJsonParse<CoverPromptSuggestion[]>(generation.coverPromptsJson, [], () =>
-      risks.push("历史生成结果解析失败：coverPromptsJson"),
+      risks.push("Failed to parse coverPromptsJson from stored generation."),
     );
     const storedRisks = safeJsonParse<string[]>(generation.risksJson, [], () =>
-      risks.push("历史生成结果解析失败：risksJson"),
+      risks.push("Failed to parse risksJson from stored generation."),
     );
     const evidence = safeJsonParse<string[]>(generation.evidenceJson, [], () =>
-      risks.push("历史生成结果解析失败：evidenceJson"),
+      risks.push("Failed to parse evidenceJson from stored generation."),
     );
 
     return NextResponse.json({
@@ -166,15 +153,136 @@ export async function GET(_request: Request, { params }: TitleIntroRouteProps) {
       },
     });
   } catch (error) {
-    return NextResponse.json(
-      {
-        success: false,
-        message: "读取书名和简介优化结果失败",
-        errors: [error instanceof Error ? error.message : "未知错误"],
-      },
-      { status: 500 },
+    return structuredError(
+      "Failed to read title and intro generation result.",
+      [error instanceof Error ? error.message : "Unknown error."],
+      500,
     );
   }
+}
+
+async function parseGenerationProvider(request: Request): Promise<ProviderParseResult> {
+  const text = await request.text();
+
+  if (!text.trim()) {
+    return { provider: "mock", error: null };
+  }
+
+  let parsed: unknown;
+
+  try {
+    parsed = JSON.parse(text);
+  } catch (error) {
+    return {
+      provider: null,
+      error: {
+        status: 400,
+        message: "Request body must be valid JSON.",
+        errors: [error instanceof Error ? error.message : "Unable to parse request JSON."],
+      },
+    };
+  }
+
+  if (!isRecord(parsed)) {
+    return {
+      provider: null,
+      error: {
+        status: 400,
+        message: "Request body must be a JSON object.",
+        errors: ["Expected an object with an optional provider field."],
+      },
+    };
+  }
+
+  const provider = parsed.provider;
+
+  if (provider === undefined || provider === null || provider === "") {
+    return { provider: "mock", error: null };
+  }
+
+  if (provider === "mock" || provider === "openai") {
+    return { provider, error: null };
+  }
+
+  return {
+    provider: null,
+    error: {
+      status: 400,
+      message: "Invalid generation provider.",
+      errors: ["provider must be one of: mock, openai."],
+    },
+  };
+}
+
+function buildGenerationInput(
+  work: {
+    id: string;
+    title: string;
+    author: string | null;
+    description: string | null;
+    category: string | null;
+    coverFileName: string | null;
+    notes: string | null;
+    currentPlays: number | null;
+    currentCtr: number | null;
+    currentFinish: number | null;
+  },
+  identification: NonNullable<TitleIntroGenerationInput["identification"]>,
+  rating: RatingResult,
+): TitleIntroGenerationInput {
+  return {
+    work: {
+      id: work.id,
+      title: work.title || "",
+      author: work.author || "",
+      intro: work.description || "",
+      category: work.category || "",
+      coverFileName: work.coverFileName || "",
+      remark: work.notes || "",
+      playCount: work.currentPlays ?? null,
+      clickRate: work.currentCtr ?? null,
+      completionRate: work.currentFinish ?? null,
+    },
+    identification,
+    rating,
+  };
+}
+
+async function runGenerationProvider(
+  provider: GenerationProvider,
+  input: TitleIntroGenerationInput,
+): Promise<TitleIntroGenerationResult> {
+  if (provider === "mock") {
+    return generateTitleIntroSuggestions(input);
+  }
+
+  if (!process.env.OPENAI_API_KEY) {
+    throw new Error("OPENAI_API_KEY is required when provider is openai.");
+  }
+
+  if (!process.env.OPENAI_TEXT_MODEL) {
+    throw new Error("OPENAI_TEXT_MODEL is required when provider is openai.");
+  }
+
+  return generateTitleIntroWithOpenAI(input);
+}
+
+function appendGenerationContext(
+  result: TitleIntroGenerationResult,
+  provider: GenerationProvider,
+  identificationRisks: string[],
+  ratingRisks: string[],
+): TitleIntroGenerationResult {
+  const providerEvidence =
+    provider === "openai"
+      ? ["Generation provider: OpenAI", `Model: ${process.env.OPENAI_TEXT_MODEL}`]
+      : ["Generation provider: Mock rule engine"];
+
+  return {
+    ...result,
+    risks: Array.from(new Set([...result.risks, ...identificationRisks, ...ratingRisks])),
+    evidence: Array.from(new Set([...result.evidence, ...providerEvidence])),
+  };
 }
 
 function parseIdentification(
@@ -194,22 +302,22 @@ function parseIdentification(
         confidence: 0,
         finalMatch: null,
         candidates: [],
-        risks: ["尚未进行作品识别"],
+        risks: ["Work has not been identified yet."],
         reason: "",
       },
-      risks: ["尚未进行作品识别"],
+      risks: ["Work has not been identified yet."],
     };
   }
 
   const risks: string[] = [];
   const finalMatch = safeJsonParse<FinalMatch | null>(identification.finalMatchJson, null, () =>
-    risks.push("WorkIdentification finalMatchJson 解析失败"),
+    risks.push("Failed to parse WorkIdentification finalMatchJson."),
   );
   const candidates = safeJsonParse<CandidateWork[]>(identification.candidatesJson, [], () =>
-    risks.push("WorkIdentification candidatesJson 解析失败"),
+    risks.push("Failed to parse WorkIdentification candidatesJson."),
   );
   const parsedRisks = safeJsonParse<string[]>(identification.risksJson, [], () =>
-    risks.push("WorkIdentification risksJson 解析失败"),
+    risks.push("Failed to parse WorkIdentification risksJson."),
   );
 
   return {
@@ -244,25 +352,25 @@ function parseRating(
         rating: "C",
         score: 50,
         confidence: 0.3,
-        reasons: ["尚未进行作品评级，使用保守默认评级"],
-        risks: ["缺少评级结果，生成建议置信度较低"],
+        reasons: ["No work rating exists yet. Conservative default rating is used."],
+        risks: ["Missing rating result. Generation confidence is lower."],
         evidence: [],
         renameSuggestion: "cautious",
-        renameReason: "缺少正式评级结果，仅生成保守优化建议",
+        renameReason: "No formal rating result exists. Only conservative optimization suggestions are generated.",
       },
-      risks: ["尚未进行作品评级，生成建议置信度较低"],
+      risks: ["Work has not been rated yet. Generation confidence is lower."],
     };
   }
 
   const risks: string[] = [];
   const reasons = safeJsonParse<string[]>(rating.reasonsJson, [], () =>
-    risks.push("WorkRating reasonsJson 解析失败"),
+    risks.push("Failed to parse WorkRating reasonsJson."),
   );
   const parsedRisks = safeJsonParse<string[]>(rating.risksJson, [], () =>
-    risks.push("WorkRating risksJson 解析失败"),
+    risks.push("Failed to parse WorkRating risksJson."),
   );
   const evidence = safeJsonParse<string[]>(rating.evidenceJson, [], () =>
-    risks.push("WorkRating evidenceJson 解析失败"),
+    risks.push("Failed to parse WorkRating evidenceJson."),
   );
 
   return {
@@ -278,21 +386,6 @@ function parseRating(
     },
     risks,
   };
-}
-
-async function parseOptionalRequestJson(request: Request): Promise<string | null> {
-  const text = await request.text();
-
-  if (!text.trim()) {
-    return null;
-  }
-
-  try {
-    JSON.parse(text);
-    return null;
-  } catch (error) {
-    return error instanceof Error ? error.message : "无法解析请求体 JSON";
-  }
 }
 
 function normalizeRating(value: string): WorkRating {
@@ -319,4 +412,112 @@ function safeJsonParse<T>(value: string, fallback: T, onError?: () => void): T {
     onError?.();
     return fallback;
   }
+}
+
+function structuredError(message: string, errors: string[], status: number) {
+  return NextResponse.json(
+    {
+      success: false,
+      message,
+      errors,
+    },
+    { status },
+  );
+}
+
+function mapGenerationError(error: unknown): { message: string; errors: string[]; status: number } {
+  if (error instanceof OpenAITitleIntroTimeoutError) {
+    return {
+      message: "OpenAI request timed out.",
+      errors: [
+        `OpenAI request timed out after ${error.timeoutMs} ms.`,
+        `usingProxy: ${error.usingProxy}`,
+        `proxyProtocol: ${error.proxyProtocol ?? "none"}`,
+        "建议检查 OPENAI_PROXY_URL、网络、代理、模型延迟，或换用更快模型。",
+      ],
+      status: 504,
+    };
+  }
+
+  if (error instanceof OpenAITitleIntroRequestError) {
+    const status = error.status;
+    const mappedStatus = status === 401 || status === 403 || status === 404 ? 400 : typeof status === "number" ? 502 : 500;
+
+    return {
+      message:
+        mappedStatus === 400
+          ? "OpenAI model or account permission is unavailable."
+          : "Failed to generate title and intro suggestions.",
+      errors: [
+        `errorName: ${error.errorName}`,
+        `errorMessage: ${error.message}`,
+        `timeoutMs: ${error.timeoutMs}`,
+        `usingProxy: ${error.usingProxy}`,
+        `proxyProtocol: ${error.proxyProtocol ?? "none"}`,
+        `model: ${error.model}`,
+        error.status === null ? "" : `status: ${error.status}`,
+        error.code ? `code: ${error.code}` : "",
+        error.causeName ? `causeName: ${error.causeName}` : "",
+        error.causeCode ? `causeCode: ${error.causeCode}` : "",
+        error.causeMessage ? `causeMessage: ${error.causeMessage}` : "",
+        "hint: 确认 npm run dev 已重启，并检查 OPENAI_PROXY_URL 是否与 test:openai-text 使用一致。",
+      ].filter(Boolean),
+      status: mappedStatus,
+    };
+  }
+
+  const message = error instanceof Error ? error.message : "Unknown error.";
+
+  if (message.includes("OPENAI_API_KEY") || message.includes("OPENAI_TEXT_MODEL")) {
+    return {
+      message: "OpenAI configuration is missing.",
+      errors: [message],
+      status: 400,
+    };
+  }
+
+  const status = getErrorStatus(error);
+  const code = getErrorCode(error);
+
+  if (status === 401 || status === 403 || status === 404) {
+    return {
+      message: "OpenAI model or account permission is unavailable.",
+      errors: [message, `status: ${status}`, code ? `code: ${code}` : ""].filter(Boolean),
+      status: 400,
+    };
+  }
+
+  if (typeof status === "number" && status >= 400) {
+    return {
+      message: "OpenAI request failed.",
+      errors: [message, `status: ${status}`, code ? `code: ${code}` : ""].filter(Boolean),
+      status: 502,
+    };
+  }
+
+  return {
+    message: "Failed to generate title and intro suggestions.",
+    errors: [message],
+    status: 500,
+  };
+}
+
+function getErrorStatus(error: unknown): number | null {
+  if (typeof error === "object" && error !== null && "status" in error && typeof error.status === "number") {
+    return error.status;
+  }
+
+  return null;
+}
+
+function getErrorCode(error: unknown): string | null {
+  if (typeof error === "object" && error !== null && "code" in error) {
+    return String(error.code);
+  }
+
+  return null;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }

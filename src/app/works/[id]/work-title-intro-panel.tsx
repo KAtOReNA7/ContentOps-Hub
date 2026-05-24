@@ -8,8 +8,11 @@ import type {
   TitleVariantSuggestion,
 } from "@/lib/generation/title-intro-types";
 
+type GenerationProvider = "mock" | "openai";
+
 type TitleIntroGenerationView = {
   generationId: string;
+  provider?: GenerationProvider;
   shouldGenerateVariants: boolean;
   strategy: GenerationStrategy;
   strategyReason: string;
@@ -42,8 +45,15 @@ const strategyLabels: Record<GenerationStrategy, string> = {
   heavy_repackage: "重包装",
 };
 
+const providerLabels: Record<GenerationProvider, string> = {
+  mock: "Mock 规则引擎",
+  openai: "OpenAI 文本生成",
+};
+
 export function WorkTitleIntroPanel({ workId }: WorkTitleIntroPanelProps) {
   const [generation, setGeneration] = useState<TitleIntroGenerationView | null>(null);
+  const [selectedProvider, setSelectedProvider] = useState<GenerationProvider>("mock");
+  const [lastProvider, setLastProvider] = useState<GenerationProvider>("mock");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -87,12 +97,15 @@ export function WorkTitleIntroPanel({ workId }: WorkTitleIntroPanelProps) {
     setError("");
 
     try {
-      const payload = await requestTitleIntro(`/api/works/${workId}/title-intro`, "POST");
+      const payload = await requestTitleIntro(`/api/works/${workId}/title-intro`, "POST", {
+        provider: selectedProvider,
+      });
 
       if (!payload.data) {
         throw new Error("generation 结果字段缺失");
       }
 
+      setLastProvider(payload.data.provider ?? selectedProvider);
       setGeneration(payload.data);
       setMessage("书名/简介优化生成完成");
     } catch (caughtError) {
@@ -102,9 +115,11 @@ export function WorkTitleIntroPanel({ workId }: WorkTitleIntroPanelProps) {
     }
   }
 
+  const shownProvider = generation?.provider ?? lastProvider;
+
   return (
     <section className="rounded-lg border border-stone-200 bg-white p-5">
-      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div>
           <h2 className="font-semibold text-stone-950">书名和简介优化 Mock</h2>
           <p className="mt-1 text-sm text-stone-600">
@@ -121,20 +136,44 @@ export function WorkTitleIntroPanel({ workId }: WorkTitleIntroPanelProps) {
         </button>
       </div>
 
+      <div className="mt-4 rounded-md border border-stone-200 bg-stone-50 p-4">
+        <p className="text-sm font-medium text-stone-950">生成来源</p>
+        <div className="mt-3 grid gap-3 md:grid-cols-2">
+          <ProviderOption
+            checked={selectedProvider === "mock"}
+            description="本地规则生成，不消耗 API 费用，适合快速测试。"
+            label="Mock 规则引擎"
+            onChange={() => setSelectedProvider("mock")}
+            value="mock"
+          />
+          <ProviderOption
+            checked={selectedProvider === "openai"}
+            description="使用 OpenAI 生成更自然的书名、简介和封面 prompt。需要服务端配置 OPENAI_API_KEY 和 OPENAI_TEXT_MODEL，会产生 API 调用费用。"
+            label="OpenAI 文本生成"
+            onChange={() => setSelectedProvider("openai")}
+            value="openai"
+          />
+        </div>
+      </div>
+
       {message ? <p className="mt-4 rounded-md bg-stone-100 px-3 py-2 text-sm text-stone-700">{message}</p> : null}
       {error ? <p className="mt-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p> : null}
       {isLoading ? <p className="mt-4 text-sm text-stone-600">加载书名/简介优化结果中...</p> : null}
 
       {!isLoading && generation ? (
         <div className="mt-5 space-y-5">
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-4">
+            <div className="rounded-md border border-stone-200 p-4">
+              <p className="text-sm text-stone-500">本次生成来源</p>
+              <p className="mt-2 text-lg font-semibold text-stone-950">{providerLabels[shownProvider]}</p>
+            </div>
             <div className="rounded-md border border-stone-200 p-4">
               <p className="text-sm text-stone-500">生成策略</p>
-              <p className="mt-2 text-xl font-semibold text-stone-950">{strategyLabels[generation.strategy]}</p>
+              <p className="mt-2 text-lg font-semibold text-stone-950">{strategyLabels[generation.strategy]}</p>
             </div>
             <div className="rounded-md border border-stone-200 p-4">
               <p className="text-sm text-stone-500">多书名方案</p>
-              <p className="mt-2 text-xl font-semibold text-stone-950">
+              <p className="mt-2 text-lg font-semibold text-stone-950">
                 {generation.shouldGenerateVariants ? "建议生成多书名方案" : "不建议大幅改名"}
               </p>
             </div>
@@ -217,6 +256,37 @@ export function WorkTitleIntroPanel({ workId }: WorkTitleIntroPanelProps) {
   );
 }
 
+function ProviderOption({
+  checked,
+  description,
+  label,
+  onChange,
+  value,
+}: {
+  checked: boolean;
+  description: string;
+  label: string;
+  onChange: () => void;
+  value: GenerationProvider;
+}) {
+  return (
+    <label className="flex cursor-pointer gap-3 rounded-md border border-stone-200 bg-white p-3">
+      <input
+        checked={checked}
+        className="mt-1"
+        name="title-intro-provider"
+        onChange={onChange}
+        type="radio"
+        value={value}
+      />
+      <span>
+        <span className="block text-sm font-medium text-stone-950">{label}</span>
+        <span className="mt-1 block text-sm leading-5 text-stone-600">{description}</span>
+      </span>
+    </label>
+  );
+}
+
 function InfoItem({ label, value }: { label: string; value: string | null | undefined }) {
   return (
     <div>
@@ -246,11 +316,22 @@ function TextList({ title, items, emptyText }: { title: string; items: string[];
 async function requestTitleIntro(
   url: string,
   method: "GET" | "POST",
+  body?: { provider: GenerationProvider },
 ): Promise<Extract<TitleIntroResponse, { success: true }>> {
   let response: Response;
 
   try {
-    response = await fetch(url, { method });
+    response = await fetch(url, {
+      method,
+      ...(body
+        ? {
+            body: JSON.stringify(body),
+            headers: {
+              "Content-Type": "application/json",
+            },
+          }
+        : {}),
+    });
   } catch {
     throw new Error("网络请求失败");
   }
