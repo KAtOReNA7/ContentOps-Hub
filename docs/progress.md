@@ -1104,3 +1104,22 @@ Prisma 同步：
 - `npm run typecheck`：通过。
 - `npm run build`：通过。
 - `npm run db:test`：通过。
+
+## 阶段 10 Excel 导出归档
+
+更新时间：2026-05-24
+
+- 阶段 10 Excel 导出已完成。
+- 作品列表页可以导出全部作品 Excel。
+- 作品详情页可以导出单本作品 Excel。
+- 导出内容包含作品基础信息、识别结果、评级结果、书名简介生成结果、封面评估结果和人工确认备注。
+- 缺失识别/评级/生成/封面评估数据时不会导致导出失败。
+- 导出结果不包含 API key。
+- 导出结果不包含服务器本地绝对路径。
+- `npm run lint`：通过。
+- `npm run typecheck`：通过。
+- `npm run build`：通过。首次执行因本项目 dev server 占用 Prisma Windows DLL 返回 EPERM，关闭相关 Node/Next 进程后重跑通过。
+- `npm run db:test`：通过。
+- 阶段 10 未接真实搜索 API。
+- 阶段 10 未接图片生成 API。
+- 阶段 10 未做原图换标题或重绘封面。
