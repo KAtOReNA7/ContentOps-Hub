@@ -53,6 +53,14 @@ export type ExportWorkRow = {
   "封面人工备注 note": string;
   "新版封面1:1地址": string;
   "新版封面3:4地址": string;
+  "重绘封面 provider": string;
+  "重绘封面状态": string;
+  "重绘封面 prompt": string;
+  "重绘结果摘要": string;
+  "重绘1:1是否已生成": string;
+  "重绘3:4是否已生成": string;
+  "重绘封面1:1地址": string;
+  "重绘封面3:4地址": string;
   "导出时间 exportedAt": string;
 };
 

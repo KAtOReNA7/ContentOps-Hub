@@ -164,12 +164,14 @@ model WorkCoverEvaluation {
 model WorkCoverRender {
   id                    String   @id @default(cuid())
   workId                String
-  coverAssetId          String
+  coverAssetId          String?
   titleIntroGenerationId String?
   titleText             String
   strategy              String
   outputRatio           String
-  outputPath            String
+  prompt                String   @default("")
+  provider              String   @default("local_sharp")
+  outputPath            String?
   outputUrl             String?
   status                String   @default("success")
   errorMessage          String?
@@ -177,7 +179,7 @@ model WorkCoverRender {
   updatedAt             DateTime @updatedAt
 
   work                 Work                       @relation(fields: [workId], references: [id], onDelete: Cascade)
-  coverAsset           CoverAsset                 @relation(fields: [coverAssetId], references: [id], onDelete: Cascade)
+  coverAsset           CoverAsset?                @relation(fields: [coverAssetId], references: [id], onDelete: SetNull)
   titleIntroGeneration WorkTitleIntroGeneration?  @relation(fields: [titleIntroGenerationId], references: [id], onDelete: SetNull)
 
   @@index([workId])

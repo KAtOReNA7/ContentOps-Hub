@@ -1151,3 +1151,40 @@ Prisma 同步：
 - `npm run typecheck`：通过。
 - `npm run build`：通过。
 - `npm run db:test`：通过。
+
+## 阶段 12：ChatGPT Image2 重新绘制封面
+
+更新时间：2026-05-25
+
+- 已复用并扩展 `WorkCoverRender`，用于保存 ChatGPT Image2 重绘结果。
+- `WorkCoverRender` 新增 `prompt` 和 `provider` 字段，`provider=chatgpt_image2` 表示阶段 12 重绘结果。
+- `WorkCoverRender.coverAssetId` 和 `outputPath` 调整为可空，以支持纯重绘失败记录和无当前封面资产的重绘记录。
+- 已新增 `src/lib/image-generation/`：
+  - `image-generation-types.ts`
+  - `image-generation-adapter.ts`
+  - `openai-image2-adapter.ts`
+  - `image-generation-service.ts`
+  - `cover-redraw-prompt.ts`
+- 图片生成业务层统一 provider 为 `chatgpt_image2`，实际 OpenAI 图片模型由 `OPENAI_IMAGE_MODEL` 配置。
+- 已新增 `OPENAI_IMAGE_MODEL` 和 `OPENAI_IMAGE_TIMEOUT_MS=120000` 示例环境变量。
+- 已新增 `GET /api/works/[id]/cover/redraw`，读取重绘记录、可选新书名和当前有效策略。
+- 已新增 `POST /api/works/[id]/cover/redraw`，仅在 `confirmCost=true` 时调用 ChatGPT Image2。
+- 重绘接口支持 `1:1` 和 `3:4`，单个比例失败时保存 `failed` 状态和错误信息。
+- 生成图片保存到 `uploads/cover-redraws/{workId}/`，继续由 Git 忽略。
+- 作品详情页新增 `work-cover-redraw-panel.tsx`，只在当前策略为 `redraw_cover` 时显示。
+- 页面支持选择新书名、手动输入标题、选择比例、查看成本提醒、确认后生成、预览和下载。
+- 阶段 11 的 `work-cover-render-panel.tsx` 保持只处理 `keep_and_replace_title` / `keep_and_optimize_layout`。
+- Excel 导出已补充重绘封面 provider、状态、prompt、结果摘要、1:1/3:4 生成状态和预览地址。
+- 已新增文档 `docs/cover-redraw.md`。
+- 已更新 `docs/cover-render.md`、`docs/export-excel.md`、`docs/CURRENT_STATUS.md`。
+
+本阶段未接真实搜索 API，未做批量自动重绘，未默认自动调用图片生成，未修改 OpenAI 文本生成逻辑，未修改封面评估逻辑，未破坏阶段 11 原图换标题功能。
+
+检查结果：
+- `npm exec -- prisma validate`：通过。
+- `npm exec -- prisma generate`：通过。
+- `npm run db:push`：通过。首次因本地数据库尚未创建返回空 `Schema engine error`，随后 `npm exec -- prisma db push --skip-generate` 成功同步，再次执行 `npm run db:push` 显示数据库已同步。
+- `npm run db:test`：通过，输出 `Prisma connected. Work count: 0`。
+- `npm run lint`：通过。
+- `npm run typecheck`：通过。
+- `npm run build`：通过。

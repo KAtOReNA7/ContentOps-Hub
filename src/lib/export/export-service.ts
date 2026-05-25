@@ -28,7 +28,7 @@ const workInclude = {
   },
   coverRenders: {
     orderBy: { createdAt: "desc" },
-    take: 8,
+    take: 12,
   },
   identifications: {
     orderBy: { updatedAt: "desc" },
@@ -80,8 +80,14 @@ function toExportRow(work: WorkForExport): ExportWorkRow {
   const generation = work.titleIntroGenerations[0] ?? null;
   const coverAsset = work.coverAssets[0] ?? null;
   const coverEvaluation = work.coverEvaluations[0] ?? null;
-  const latestSquareRender = work.coverRenders.find((render) => render.outputRatio === "1:1") ?? null;
-  const latestPortraitRender = work.coverRenders.find((render) => render.outputRatio === "3:4") ?? null;
+  const localSharpRenders = work.coverRenders.filter((render) => render.strategy !== "redraw_cover");
+  const redrawRenders = work.coverRenders.filter(
+    (render) => render.strategy === "redraw_cover" && render.provider === "chatgpt_image2",
+  );
+  const latestSquareRender = localSharpRenders.find((render) => render.outputRatio === "1:1") ?? null;
+  const latestPortraitRender = localSharpRenders.find((render) => render.outputRatio === "3:4") ?? null;
+  const latestRedrawSquare = redrawRenders.find((render) => render.outputRatio === "1:1") ?? null;
+  const latestRedrawPortrait = redrawRenders.find((render) => render.outputRatio === "3:4") ?? null;
   const finalMatchRaw = safeJsonParse<FinalMatch | string | null>(identification?.finalMatchJson, null);
   const finalMatch = typeof finalMatchRaw === "string" ? null : finalMatchRaw;
   const finalMatchParseError = typeof finalMatchRaw === "string" ? finalMatchRaw : "";
@@ -155,6 +161,14 @@ function toExportRow(work: WorkForExport): ExportWorkRow {
     "封面人工备注 note": text(coverEvaluation?.reviewNote),
     "新版封面1:1地址": latestSquareRender ? `/api/cover-renders/${latestSquareRender.id}/file` : "",
     "新版封面3:4地址": latestPortraitRender ? `/api/cover-renders/${latestPortraitRender.id}/file` : "",
+    "重绘封面 provider": text(latestRedrawSquare?.provider ?? latestRedrawPortrait?.provider),
+    "重绘封面状态": redrawStatusSummary(latestRedrawSquare, latestRedrawPortrait),
+    "重绘封面 prompt": text(latestRedrawSquare?.prompt ?? latestRedrawPortrait?.prompt),
+    "重绘结果摘要": redrawResultSummary(latestRedrawSquare, latestRedrawPortrait),
+    "重绘1:1是否已生成": booleanLabel(latestRedrawSquare?.status === "success"),
+    "重绘3:4是否已生成": booleanLabel(latestRedrawPortrait?.status === "success"),
+    "重绘封面1:1地址": latestRedrawSquare?.status === "success" ? `/api/cover-renders/${latestRedrawSquare.id}/file` : "",
+    "重绘封面3:4地址": latestRedrawPortrait?.status === "success" ? `/api/cover-renders/${latestRedrawPortrait.id}/file` : "",
     "导出时间 exportedAt": exportedAt,
   };
 }
@@ -225,6 +239,26 @@ function booleanLabel(value: boolean | null | undefined): string {
   if (value === true) return "是";
   if (value === false) return "否";
   return "";
+}
+
+function redrawStatusSummary(
+  square: { status: string; errorMessage: string | null } | null,
+  portrait: { status: string; errorMessage: string | null } | null,
+): string {
+  return joinList([
+    square ? `1:1 ${square.status}${square.errorMessage ? `：${square.errorMessage}` : ""}` : "",
+    portrait ? `3:4 ${portrait.status}${portrait.errorMessage ? `：${portrait.errorMessage}` : ""}` : "",
+  ]);
+}
+
+function redrawResultSummary(
+  square: { id: string; status: string; titleText: string } | null,
+  portrait: { id: string; status: string; titleText: string } | null,
+): string {
+  return joinList([
+    square ? `1:1 ${square.status} ${square.titleText}` : "",
+    portrait ? `3:4 ${portrait.status} ${portrait.titleText}` : "",
+  ]);
 }
 
 function fileDate(): string {

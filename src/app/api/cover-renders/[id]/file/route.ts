@@ -18,11 +18,17 @@ export async function GET(_request: Request, { params }: CoverRenderFileRoutePro
         outputPath: true,
         outputRatio: true,
         titleText: true,
+        status: true,
+        errorMessage: true,
       },
     });
 
     if (!render) {
       return structuredError("Cover render not found.", [], 404);
+    }
+
+    if (render.status === "failed" || !render.outputPath) {
+      return structuredError("Cover render file is not available.", [render.errorMessage ?? "No output file was saved."], 404);
     }
 
     const uploadsRoot = path.join(process.cwd(), "uploads");

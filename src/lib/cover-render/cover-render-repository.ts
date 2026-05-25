@@ -1,16 +1,23 @@
 import type { WorkCoverRender } from "@prisma/client";
-import type { CoverRenderRatio, CoverRenderStatus, CoverRenderView } from "@/lib/cover-render/cover-render-types";
+import type {
+  CoverRenderProvider,
+  CoverRenderRatio,
+  CoverRenderStatus,
+  CoverRenderView,
+} from "@/lib/cover-render/cover-render-types";
 import type { CoverStrategy } from "@/lib/cover/cover-types";
 import { prisma } from "@/server/db";
 
 export type SaveCoverRenderParams = {
   workId: string;
-  coverAssetId: string;
+  coverAssetId?: string | null;
   titleIntroGenerationId?: string | null;
   titleText: string;
   strategy: CoverStrategy;
   outputRatio: CoverRenderRatio;
-  outputPath: string;
+  prompt?: string;
+  provider?: CoverRenderProvider;
+  outputPath?: string | null;
   status?: CoverRenderStatus;
   errorMessage?: string | null;
 };
@@ -19,12 +26,14 @@ export async function saveCoverRender(params: SaveCoverRenderParams) {
   return prisma.workCoverRender.create({
     data: {
       workId: params.workId,
-      coverAssetId: params.coverAssetId,
+      coverAssetId: params.coverAssetId || null,
       titleIntroGenerationId: params.titleIntroGenerationId || null,
       titleText: params.titleText,
       strategy: params.strategy,
       outputRatio: params.outputRatio,
-      outputPath: params.outputPath,
+      prompt: params.prompt ?? "",
+      provider: params.provider ?? "local_sharp",
+      outputPath: params.outputPath ?? null,
       outputUrl: null,
       status: params.status ?? "success",
       errorMessage: params.errorMessage ?? null,
@@ -34,7 +43,12 @@ export async function saveCoverRender(params: SaveCoverRenderParams) {
 
 export async function getLatestCoverRenders(workId: string) {
   return prisma.workCoverRender.findMany({
-    where: { workId },
+    where: {
+      workId,
+      strategy: {
+        not: "redraw_cover",
+      },
+    },
     orderBy: { createdAt: "desc" },
     take: 6,
   });
@@ -48,6 +62,8 @@ export function toCoverRenderView(render: WorkCoverRender): CoverRenderView {
     titleText: render.titleText,
     strategy: normalizeRenderStrategy(render.strategy),
     outputRatio: normalizeRatio(render.outputRatio),
+    prompt: render.prompt,
+    provider: normalizeProvider(render.provider),
     outputUrl: `/api/cover-renders/${render.id}/file`,
     status: render.status === "failed" ? "failed" : "success",
     errorMessage: render.errorMessage,
@@ -65,4 +81,8 @@ function normalizeRenderStrategy(value: string): CoverStrategy {
   }
 
   return "keep_and_optimize_layout";
+}
+
+function normalizeProvider(value: string): CoverRenderProvider {
+  return value === "chatgpt_image2" ? "chatgpt_image2" : "local_sharp";
 }

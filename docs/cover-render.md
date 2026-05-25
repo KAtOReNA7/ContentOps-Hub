@@ -82,6 +82,25 @@ V1 使用 `sharp` 做程序化合成：
 - 不做 OCR，不自动擦除原封面旧标题。
 - 远程封面读取沿用安全限制：仅 http/https，阻止 localhost 和常见内网 IP，限制 timeout、MIME 和大小。
 
+## 阶段 12 说明
+
+阶段 11 只做“原图换标题 / 版式优化”，适用于：
+
+- `keep_and_replace_title`
+- `keep_and_optimize_layout`
+
+阶段 12 新增“重新绘制封面”，适用于：
+
+- `redraw_cover`
+
+两条路径共用 `WorkCoverRender` 保存结果，但通过字段清晰区分：
+
+- 阶段 11：`provider=local_sharp`
+- 阶段 12：`provider=chatgpt_image2`
+- 阶段 12 会额外保存 `prompt`
+
+阶段 12 生成图片保存在 `uploads/cover-redraws/{workId}/`，仍不提交 Git。
+
 ## 手动测试
 
 1. 运行 `npm run dev`。
