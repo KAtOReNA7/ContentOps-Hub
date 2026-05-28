@@ -3,16 +3,16 @@ import Link from "next/link";
 import "./globals.css";
 
 const navItems = [
-  { href: "/", label: "Dashboard" },
+  { href: "/", label: "运营看板" },
   { href: "/import", label: "作品导入" },
   { href: "/works", label: "作品列表" },
-  { href: "/analysis", label: "分析结果" },
-  { href: "/settings", label: "设置" },
+  { href: "/analysis", label: "批量任务结果" },
+  { href: "/settings", label: "系统配置" },
 ];
 
 export const metadata: Metadata = {
-  title: "番茄畅畅听多书名运营辅助工具",
-  description: "面向有声书运营的多书名分析 MVP",
+  title: "内容运营综合管理平台",
+  description: "番茄畅畅听多书名运营辅助工具",
 };
 
 export default function RootLayout({
@@ -23,11 +23,12 @@ export default function RootLayout({
   return (
     <html lang="zh-CN">
       <body>
-        <div className="min-h-screen">
+        <div className="min-h-screen bg-stone-50">
           <header className="border-b border-stone-200 bg-white">
-            <div className="mx-auto flex max-w-6xl flex-col gap-4 px-5 py-4 md:flex-row md:items-center md:justify-between">
-              <Link href="/" className="text-lg font-semibold text-stone-950">
-                番茄畅畅听运营辅助
+            <div className="mx-auto flex max-w-7xl flex-col gap-4 px-5 py-4 md:flex-row md:items-center md:justify-between">
+              <Link href="/" className="group">
+                <p className="text-lg font-semibold text-stone-950">内容运营综合管理平台</p>
+                <p className="mt-0.5 text-xs text-stone-500">番茄畅畅听多书名运营辅助工具</p>
               </Link>
               <nav className="flex flex-wrap gap-2 text-sm text-stone-700">
                 {navItems.map((item) => (
@@ -42,7 +43,7 @@ export default function RootLayout({
               </nav>
             </div>
           </header>
-          <main className="mx-auto max-w-6xl px-5 py-6">{children}</main>
+          <main className="mx-auto max-w-7xl px-5 py-6">{children}</main>
         </div>
       </body>
     </html>

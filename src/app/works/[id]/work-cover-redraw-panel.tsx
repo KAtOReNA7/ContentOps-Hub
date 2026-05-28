@@ -105,9 +105,17 @@ export function WorkCoverRedrawPanel({ evaluation, workId }: WorkCoverRedrawPane
     }
 
     void loadRedrawState();
+    const reloadAfterTitleIntroUpdate = (event: Event) => {
+      const detail = (event as CustomEvent<{ workId?: string }>).detail;
+      if (!detail?.workId || detail.workId === workId) {
+        void loadRedrawState();
+      }
+    };
+    window.addEventListener("title-intro-generation-updated", reloadAfterTitleIntroUpdate);
 
     return () => {
       cancelled = true;
+      window.removeEventListener("title-intro-generation-updated", reloadAfterTitleIntroUpdate);
     };
   }, [workId]);
 

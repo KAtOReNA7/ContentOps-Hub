@@ -222,12 +222,13 @@ export function WorkReviewPanel({ workId }: WorkReviewPanelProps) {
             <div className="flex flex-wrap gap-2">
               {titleOptions.map((option) => (
                 <button
-                  className="rounded-md border border-stone-300 px-3 py-2 text-sm text-stone-700 hover:border-red-300 hover:bg-red-50"
+                  className="max-w-full rounded-md border border-stone-300 px-3 py-2 text-left text-sm text-stone-700 hover:border-red-300 hover:bg-red-50"
+                  title={option.value}
                   key={`${option.label}-${option.value}`}
                   onClick={() => setFinalTitle(option.value)}
                   type="button"
                 >
-                  填入{option.label}
+                  <span className="block max-w-64 truncate">{option.label}</span>
                 </button>
               ))}
             </div>

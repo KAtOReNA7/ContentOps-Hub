@@ -1,7 +1,7 @@
 import type { Prisma } from "@prisma/client";
 import type { FinalMatch } from "@/lib/adapters/search-adapter";
 import type { CoverPromptSuggestion, IntroVariantSuggestion, TitleVariantSuggestion } from "@/lib/generation/title-intro-types";
-import type { ExportWorkRow, ExportWorkbookPayload } from "@/lib/export/export-types";
+import type { ExportWorkFilters, ExportWorkRow, ExportWorkbookPayload } from "@/lib/export/export-types";
 import { prisma } from "@/server/db";
 
 const exportDateFormatter = new Intl.DateTimeFormat("zh-CN", {
@@ -17,65 +17,50 @@ const fileDateFormatter = new Intl.DateTimeFormat("zh-CN", {
   year: "numeric",
 });
 
-const workInclude = {
-  coverAssets: {
-    orderBy: { createdAt: "desc" },
-    take: 1,
-  },
-  coverEvaluations: {
-    orderBy: { createdAt: "desc" },
-    take: 1,
-  },
-  coverRenders: {
-    orderBy: { createdAt: "desc" },
-    take: 12,
-  },
-  identifications: {
-    orderBy: { updatedAt: "desc" },
-    take: 1,
-  },
-  ratings: {
-    orderBy: { createdAt: "desc" },
-    take: 1,
-  },
-  titleIntroGenerations: {
-    orderBy: { createdAt: "desc" },
-    take: 1,
-  },
+export const workExportInclude = {
+  coverAssets: { orderBy: { createdAt: "desc" }, take: 3 },
+  coverEvaluations: { orderBy: { createdAt: "desc" }, take: 1 },
+  coverRenders: { orderBy: { createdAt: "desc" }, take: 16 },
+  identifications: { orderBy: { updatedAt: "desc" }, take: 1 },
+  ratings: { orderBy: { createdAt: "desc" }, take: 1 },
+  titleIntroGenerations: { orderBy: { createdAt: "desc" }, take: 1 },
 } satisfies Prisma.WorkInclude;
 
-type WorkForExport = Prisma.WorkGetPayload<{ include: typeof workInclude }>;
+export type WorkForExport = Prisma.WorkGetPayload<{ include: typeof workExportInclude }>;
 
 const reviewStatusLabels: Record<string, string> = {
-  pending_review: "待审核",
   approved: "已采用",
-  rejected: "已退回",
-  on_hold: "暂缓",
   needs_revision: "需修改",
+  on_hold: "暂缓",
+  pending_review: "待审核",
+  rejected: "已退回",
 };
 
 const finalCoverSourceLabels: Record<string, string> = {
-  original_cover: "原封面",
-  local_sharp: "原图换标题",
   chatgpt_image2: "ChatGPT Image2 重绘",
+  local_sharp: "原图换标题",
+  original_cover: "原封面",
 };
 
-export async function buildAllWorksExport(): Promise<ExportWorkbookPayload> {
-  const works = await prisma.work.findMany({
-    include: workInclude,
-    orderBy: { createdAt: "desc" },
-  });
+const coverStrategyLabels: Record<string, string> = {
+  keep_and_optimize_layout: "保留主体，优化标题区和版式",
+  keep_and_replace_title: "保留主体，仅替换封面标题",
+  redraw_cover: "重新绘制封面",
+};
+
+export async function buildAllWorksExport(filters: ExportWorkFilters = {}): Promise<ExportWorkbookPayload> {
+  const works = await findWorksForExport(filters);
 
   return {
-    rows: works.map((work) => toExportRow(work)),
     fileName: `works-export-${fileDate()}.xlsx`,
+    rows: works.map((work) => toExportRow(work)),
   };
 }
 
 export async function buildSingleWorkExport(workId: string): Promise<ExportWorkbookPayload | null> {
   const work = await prisma.work.findUnique({
+    include: workExportInclude,
     where: { id: workId },
-    include: workInclude,
   });
 
   if (!work) {
@@ -83,43 +68,74 @@ export async function buildSingleWorkExport(workId: string): Promise<ExportWorkb
   }
 
   return {
-    rows: [toExportRow(work)],
     fileName: `work-export-${safeFilePart(work.externalId || work.id)}-${fileDate()}.xlsx`,
+    rows: [toExportRow(work)],
   };
 }
 
-function toExportRow(work: WorkForExport): ExportWorkRow {
+export async function findWorksForExport(filters: ExportWorkFilters = {}): Promise<WorkForExport[]> {
+  const where = buildWorkWhere(filters);
+
+  return prisma.work.findMany({
+    include: workExportInclude,
+    orderBy: { createdAt: "desc" },
+    where,
+  });
+}
+
+export function buildWorkWhere(filters: ExportWorkFilters): Prisma.WorkWhereInput {
+  const and: Prisma.WorkWhereInput[] = [];
+
+  if (filters.ids?.length) {
+    and.push({ id: { in: filters.ids } });
+  }
+  if (filters.title?.trim()) {
+    and.push({ title: { contains: filters.title.trim() } });
+  }
+  if (filters.author?.trim()) {
+    and.push({ author: { contains: filters.author.trim() } });
+  }
+  if (filters.category?.trim()) {
+    and.push({ category: filters.category.trim() });
+  }
+  if (filters.reviewStatus?.trim()) {
+    and.push({ reviewStatus: filters.reviewStatus.trim() });
+  }
+  if (filters.rating?.trim()) {
+    and.push({ ratings: { some: { rating: filters.rating.trim() } } });
+  }
+
+  return and.length ? { AND: and } : {};
+}
+
+export function toExportRow(work: WorkForExport): ExportWorkRow {
   const identification = work.identifications[0] ?? null;
   const rating = work.ratings[0] ?? null;
   const generation = work.titleIntroGenerations[0] ?? null;
   const coverAsset = work.coverAssets[0] ?? null;
   const coverEvaluation = work.coverEvaluations[0] ?? null;
   const localSharpRenders = work.coverRenders.filter((render) => render.strategy !== "redraw_cover");
-  const redrawRenders = work.coverRenders.filter(
-    (render) => render.strategy === "redraw_cover" && render.provider === "chatgpt_image2",
-  );
+  const redrawRenders = work.coverRenders.filter((render) => render.strategy === "redraw_cover");
   const latestSquareRender = localSharpRenders.find((render) => render.outputRatio === "1:1") ?? null;
   const latestPortraitRender = localSharpRenders.find((render) => render.outputRatio === "3:4") ?? null;
   const latestRedrawSquare = redrawRenders.find((render) => render.outputRatio === "1:1") ?? null;
   const latestRedrawPortrait = redrawRenders.find((render) => render.outputRatio === "3:4") ?? null;
-  const finalMatchRaw = safeJsonParse<FinalMatch | string | null>(identification?.finalMatchJson, null);
-  const finalMatch = typeof finalMatchRaw === "string" ? null : finalMatchRaw;
-  const finalMatchParseError = typeof finalMatchRaw === "string" ? finalMatchRaw : "";
+  const finalMatch = safeJsonParse<FinalMatch | null>(identification?.finalMatchJson, null);
   const identificationRisks = safeJsonParse<string[]>(identification?.risksJson, []);
   const ratingReasons = safeJsonParse<string[]>(rating?.reasonsJson, []);
   const ratingRisks = safeJsonParse<string[]>(rating?.risksJson, []);
   const ratingEvidence = safeJsonParse<string[]>(rating?.evidenceJson, []);
-  const titleVariants = safeJsonParse<TitleVariantSuggestion[] | string>(generation?.titleVariantsJson, []);
-  const introVariantRaw = safeJsonParse<IntroVariantSuggestion | string | null>(generation?.introVariantJson, null);
-  const introVariant = typeof introVariantRaw === "string" ? null : introVariantRaw;
-  const introVariantParseError = typeof introVariantRaw === "string" ? introVariantRaw : "";
-  const suggestedIntro = introVariantParseError || text(introVariant?.intro);
-  const coverPrompts = safeJsonParse<CoverPromptSuggestion[] | string>(generation?.coverPromptsJson, []);
+  const titleVariants = safeJsonParse<TitleVariantSuggestion[]>(generation?.titleVariantsJson, []);
+  const introVariant = safeJsonParse<IntroVariantSuggestion | null>(generation?.introVariantJson, null);
+  const coverPrompts = safeJsonParse<CoverPromptSuggestion[]>(generation?.coverPromptsJson, []);
   const generationEvidence = safeJsonParse<string[]>(generation?.evidenceJson, []);
   const coverStrengths = safeJsonParse<string[]>(coverEvaluation?.strengthsJson, []);
   const coverWeaknesses = safeJsonParse<string[]>(coverEvaluation?.weaknessesJson, []);
   const provider = inferGenerationProvider(generationEvidence);
   const exportedAt = exportDateFormatter.format(new Date());
+  const finalTitle = text(work.finalTitle) || work.title;
+  const finalIntro = text(work.finalIntro) || text(introVariant?.intro) || work.description;
+  const finalCoverUrl = text(work.finalCoverUrl);
 
   return {
     "作品ID externalId": text(work.externalId),
@@ -133,21 +149,19 @@ function toExportRow(work: WorkForExport): ExportWorkRow {
     "封面文件名 coverFileName": text(work.coverFileName),
     "封面地址 remoteUrl": text(coverAsset?.remoteUrl ?? work.coverUrl),
     "审核状态": reviewStatusLabels[work.reviewStatus] ?? work.reviewStatus,
-    "最终书名": text(work.finalTitle) || work.title,
-    "最终简介": text(work.finalIntro) || suggestedIntro || work.description,
-    "最终封面地址": text(work.finalCoverUrl),
-    "最终封面来源": work.finalCoverSource
-      ? finalCoverSourceLabels[work.finalCoverSource] ?? work.finalCoverSource
-      : "",
+    "最终书名": finalTitle,
+    "最终简介": finalIntro,
+    "最终封面地址": finalCoverUrl,
+    "最终封面来源": work.finalCoverSource ? finalCoverSourceLabels[work.finalCoverSource] ?? work.finalCoverSource : "",
     "审核备注": text(work.reviewNote),
     "审核人": text(work.reviewerName),
     "审核时间": work.reviewedAt ? exportDateFormatter.format(work.reviewedAt) : "",
-    "识别匹配作品名": finalMatchParseError || text(finalMatch?.title),
-    "识别匹配作者": finalMatchParseError || text(finalMatch?.author),
+    "识别匹配作品名": text(finalMatch?.title),
+    "识别匹配作者": text(finalMatch?.author),
     "识别置信度": decimal(identification?.confidence),
     "识别理由": text(identification?.reason),
     "识别风险": joinList(identificationRisks),
-    "是否人工确认": booleanLabel(identification?.confirmed),
+    "识别是否人工确认": booleanLabel(identification?.confirmed),
     "人工确认书名": text(identification?.confirmedTitle),
     "人工确认作者": text(identification?.confirmedAuthor),
     "作品评级 rating": text(rating?.rating),
@@ -172,79 +186,58 @@ function toExportRow(work: WorkForExport): ExportWorkRow {
     "新书名4理由": titleAt(titleVariants, 3, "reason"),
     "新书名5": titleAt(titleVariants, 4, "title"),
     "新书名5理由": titleAt(titleVariants, 4, "reason"),
-    "新版简介": introVariantParseError || text(introVariant?.intro),
-    "简介优化理由": introVariantParseError || text(introVariant?.reason),
+    "新版简介": text(introVariant?.intro),
+    "简介优化理由": text(introVariant?.reason),
     "封面Prompt": coverPromptsToText(coverPrompts),
     "封面评分 score": coverEvaluation?.score ?? "",
     "封面评级 rating": text(coverEvaluation?.rating),
     "封面优点 strengths": joinList(coverStrengths),
     "封面问题 weaknesses": joinList(coverWeaknesses),
-    "封面处理策略 strategy": text(coverEvaluation?.strategy),
+    "封面处理策略 strategy": coverStrategyLabels[coverEvaluation?.strategy ?? ""] ?? text(coverEvaluation?.strategy),
     "封面处理理由 reason": text(coverEvaluation?.reason),
     "封面是否人工确认 confirmed": booleanLabel(coverEvaluation?.confirmed),
-    "封面人工确认策略 confirmedStrategy": text(coverEvaluation?.confirmedStrategy),
+    "封面人工确认策略 confirmedStrategy": coverStrategyLabels[coverEvaluation?.confirmedStrategy ?? ""] ?? text(coverEvaluation?.confirmedStrategy),
     "封面人工备注 note": text(coverEvaluation?.reviewNote),
-    "新版封面1:1地址": latestSquareRender ? `/api/cover-renders/${latestSquareRender.id}/file` : "",
-    "新版封面3:4地址": latestPortraitRender ? `/api/cover-renders/${latestPortraitRender.id}/file` : "",
-    "重绘封面 provider": text(latestRedrawSquare?.provider ?? latestRedrawPortrait?.provider),
-    "重绘封面状态": redrawStatusSummary(latestRedrawSquare, latestRedrawPortrait),
-    "重绘封面 prompt": text(latestRedrawSquare?.prompt ?? latestRedrawPortrait?.prompt),
-    "重绘结果摘要": redrawResultSummary(latestRedrawSquare, latestRedrawPortrait),
-    "重绘1:1是否已生成": booleanLabel(latestRedrawSquare?.status === "success"),
-    "重绘3:4是否已生成": booleanLabel(latestRedrawPortrait?.status === "success"),
-    "重绘封面1:1地址": latestRedrawSquare?.status === "success" ? `/api/cover-renders/${latestRedrawSquare.id}/file` : "",
-    "重绘封面3:4地址": latestRedrawPortrait?.status === "success" ? `/api/cover-renders/${latestRedrawPortrait.id}/file` : "",
+    "原图换标题1:1地址": latestSquareRender ? `/api/cover-renders/${latestSquareRender.id}/file` : "",
+    "原图换标题3:4地址": latestPortraitRender ? `/api/cover-renders/${latestPortraitRender.id}/file` : "",
+    "Image2重绘 provider": text(latestRedrawSquare?.provider ?? latestRedrawPortrait?.provider),
+    "Image2重绘状态": redrawStatusSummary(latestRedrawSquare, latestRedrawPortrait),
+    "Image2重绘 prompt": text(latestRedrawSquare?.prompt ?? latestRedrawPortrait?.prompt),
+    "Image2重绘结果摘要": redrawResultSummary(latestRedrawSquare, latestRedrawPortrait),
+    "Image2重绘1:1是否生成": booleanLabel(latestRedrawSquare?.status === "success"),
+    "Image2重绘3:4是否生成": booleanLabel(latestRedrawPortrait?.status === "success"),
+    "Image2重绘1:1地址": latestRedrawSquare?.status === "success" ? `/api/cover-renders/${latestRedrawSquare.id}/file` : "",
+    "Image2重绘3:4地址": latestRedrawPortrait?.status === "success" ? `/api/cover-renders/${latestRedrawPortrait.id}/file` : "",
     "导出时间 exportedAt": exportedAt,
   };
 }
 
 function safeJsonParse<T>(value: string | null | undefined, fallback: T): T {
-  if (!value) {
-    return fallback;
-  }
+  if (!value) return fallback;
 
   try {
     return JSON.parse(value) as T;
   } catch {
-    return "解析失败" as T;
+    return fallback;
   }
 }
 
-function joinList(value: string[] | string): string {
-  if (typeof value === "string") {
-    return value;
-  }
-
+function joinList(value: string[]): string {
   return value.filter(Boolean).join("；");
 }
 
-function titleAt(value: TitleVariantSuggestion[] | string, index: number, key: "title" | "reason"): string {
-  if (typeof value === "string") {
-    return value;
-  }
-
+function titleAt(value: TitleVariantSuggestion[], index: number, key: "title" | "reason"): string {
   return text(value[index]?.[key]);
 }
 
-function coverPromptsToText(value: CoverPromptSuggestion[] | string): string {
-  if (typeof value === "string") {
-    return value;
-  }
-
+function coverPromptsToText(value: CoverPromptSuggestion[]): string {
   return joinList(value.map((prompt) => `${prompt.ratio}：${prompt.prompt}`));
 }
 
-function inferGenerationProvider(evidence: string[] | string): string {
+function inferGenerationProvider(evidence: string[]): string {
   const textValue = joinList(evidence);
-
-  if (textValue.includes("OpenAI")) {
-    return "openai";
-  }
-
-  if (textValue.includes("Mock")) {
-    return "mock";
-  }
-
+  if (textValue.includes("OpenAI")) return "openai";
+  if (textValue.includes("Mock")) return "mock";
   return "";
 }
 
@@ -277,8 +270,8 @@ function redrawStatusSummary(
 }
 
 function redrawResultSummary(
-  square: { id: string; status: string; titleText: string } | null,
-  portrait: { id: string; status: string; titleText: string } | null,
+  square: { status: string; titleText: string } | null,
+  portrait: { status: string; titleText: string } | null,
 ): string {
   return joinList([
     square ? `1:1 ${square.status} ${square.titleText}` : "",

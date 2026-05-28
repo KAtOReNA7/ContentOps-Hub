@@ -107,6 +107,7 @@ export function WorkTitleIntroPanel({ workId }: WorkTitleIntroPanelProps) {
 
       setLastProvider(payload.data.provider ?? selectedProvider);
       setGeneration(payload.data);
+      window.dispatchEvent(new CustomEvent("title-intro-generation-updated", { detail: { workId } }));
       setMessage("书名/简介优化生成完成");
     } catch (caughtError) {
       setError(caughtError instanceof Error ? caughtError.message : "网络请求失败");

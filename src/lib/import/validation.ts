@@ -152,7 +152,7 @@ export function validateImportRows(
     }
 
     if (!row.coverFileName) {
-      warnings.push("封面文件名缺失");
+      warnings.push("封面文件 / 封面地址缺失");
     }
 
     if (row.externalId) {

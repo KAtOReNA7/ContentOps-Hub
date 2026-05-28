@@ -70,7 +70,7 @@ export default async function WorkDetailPage({ params }: WorkDetailPageProps) {
           <p className="mt-2 text-lg font-semibold text-stone-950">{work.category || "-"}</p>
         </div>
         <div className="rounded-lg border border-stone-200 bg-white p-5">
-          <p className="text-sm text-stone-500">封面文件名</p>
+          <p className="text-sm text-stone-500">封面文件 / 封面地址</p>
           <p className="mt-2 text-lg font-semibold text-stone-950">{work.coverFileName || "-"}</p>
         </div>
       </section>

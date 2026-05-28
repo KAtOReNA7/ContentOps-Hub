@@ -100,10 +100,10 @@ export async function GET(_request: Request, context: RouteContext) {
       },
       suggestions: {
         titles: [
-          { label: "原书名", value: work.title },
+          { label: work.title, value: work.title },
           ...titleVariants
             .map((variant, index) => ({
-              label: `新书名 ${index + 1}`,
+              label: variant.title?.trim() || `新书名 ${index + 1}`,
               value: variant.title?.trim() ?? "",
             }))
             .filter((option) => option.value),

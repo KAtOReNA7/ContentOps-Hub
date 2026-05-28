@@ -80,9 +80,17 @@ export function WorkCoverRenderPanel({ evaluation, workId }: WorkCoverRenderPane
     }
 
     void loadRenders();
+    const reloadAfterTitleIntroUpdate = (event: Event) => {
+      const detail = (event as CustomEvent<{ workId?: string }>).detail;
+      if (!detail?.workId || detail.workId === workId) {
+        void loadRenders();
+      }
+    };
+    window.addEventListener("title-intro-generation-updated", reloadAfterTitleIntroUpdate);
 
     return () => {
       cancelled = true;
+      window.removeEventListener("title-intro-generation-updated", reloadAfterTitleIntroUpdate);
     };
   }, [workId]);
 
