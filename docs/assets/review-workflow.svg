@@ -1,0 +1,25 @@
+<svg width="1280" height="360" viewBox="0 0 1280 360" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1280" height="360" rx="28" fill="#0F172A"/>
+  <text x="70" y="72" font-family="Inter, Arial, 'Microsoft YaHei', sans-serif" font-size="34" font-weight="800" fill="#FFFFFF">运营闭环流程</text>
+  <text x="70" y="112" font-family="Inter, Arial, 'Microsoft YaHei', sans-serif" font-size="18" fill="#94A3B8">从作品导入到最终交付，保留人工确认，避免全自动失控。</text>
+  <g font-family="Inter, Arial, 'Microsoft YaHei', sans-serif" font-size="18" font-weight="700">
+    <rect x="70" y="168" width="150" height="76" rx="18" fill="#1E293B" stroke="#334155"/>
+    <text x="108" y="214" fill="#E2E8F0">作品导入</text>
+    <path d="M235 206H290" stroke="#F97316" stroke-width="4" stroke-linecap="round"/>
+    <path d="M284 194L300 206L284 218" stroke="#F97316" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="315" y="168" width="150" height="76" rx="18" fill="#1E293B" stroke="#334155"/>
+    <text x="353" y="214" fill="#E2E8F0">识别评级</text>
+    <path d="M480 206H535" stroke="#F97316" stroke-width="4" stroke-linecap="round"/>
+    <path d="M529 194L545 206L529 218" stroke="#F97316" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="560" y="168" width="170" height="76" rx="18" fill="#1E293B" stroke="#334155"/>
+    <text x="598" y="214" fill="#E2E8F0">生成建议</text>
+    <path d="M745 206H800" stroke="#F97316" stroke-width="4" stroke-linecap="round"/>
+    <path d="M794 194L810 206L794 218" stroke="#F97316" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="825" y="168" width="170" height="76" rx="18" fill="#1E293B" stroke="#334155"/>
+    <text x="863" y="214" fill="#E2E8F0">人工审核</text>
+    <path d="M1010 206H1065" stroke="#F97316" stroke-width="4" stroke-linecap="round"/>
+    <path d="M1059 194L1075 206L1059 218" stroke="#F97316" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="1090" y="168" width="150" height="76" rx="18" fill="#1E293B" stroke="#334155"/>
+    <text x="1128" y="214" fill="#E2E8F0">结果导出</text>
+  </g>
+</svg>
