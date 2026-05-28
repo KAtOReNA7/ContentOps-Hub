@@ -4,6 +4,7 @@ import { WorkCoverPanel } from "@/app/works/[id]/work-cover-panel";
 import { WorkExportButton } from "@/app/works/[id]/work-export-button";
 import { WorkIdentificationPanel, type WorkIdentificationView } from "@/app/works/[id]/work-identification-panel";
 import { WorkRatingPanel } from "@/app/works/[id]/work-rating-panel";
+import { WorkReviewPanel } from "@/app/works/[id]/work-review-panel";
 import { WorkTitleIntroPanel } from "@/app/works/[id]/work-title-intro-panel";
 import type { CandidateWork, FinalMatch } from "@/lib/adapters/search-adapter";
 import { prisma } from "@/server/db";
@@ -102,6 +103,7 @@ export default async function WorkDetailPage({ params }: WorkDetailPageProps) {
       <WorkRatingPanel workId={work.id} />
       <WorkTitleIntroPanel workId={work.id} />
       <WorkCoverPanel workId={work.id} />
+      <WorkReviewPanel workId={work.id} />
     </div>
   );
 }

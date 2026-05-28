@@ -1188,3 +1188,30 @@ Prisma 同步：
 - `npm run lint`：通过。
 - `npm run typecheck`：通过。
 - `npm run build`：通过。
+
+## 阶段 13：人工审核状态流和最终采用结果管理
+
+更新时间：2026-05-28
+
+- 已确认 OpenAI-compatible 中转站支持提交到本地 `main`：`e301cfa feat: 支持 OpenAI 兼容中转站 API`。
+- 已在 `Work` 上新增作品级审核状态和最终采用结果字段。
+- 审核状态支持：
+  - `pending_review`
+  - `approved`
+  - `rejected`
+  - `on_hold`
+  - `needs_revision`
+- 已新增 `GET /api/works/[id]/review`，读取审核结果、可快速填入的书名/简介建议和可选封面结果。
+- 已新增 `POST /api/works/[id]/review`，保存审核状态、最终书名、最终简介、最终封面、审核备注、审核人和审核时间。
+- 作品详情页新增“最终采用结果 / 人工审核”区域。
+- 支持从原书名、新书名建议、当前简介、新版简介快速填入最终采用内容。
+- 支持从原封面、阶段 11 `local_sharp` 结果和阶段 12 `chatgpt_image2` 重绘结果中选择最终封面。
+- 作品列表页新增审核状态筛选，并在列表项上显示审核状态。
+- Excel 导出新增审核状态、最终书名、最终简介、最终封面地址、最终封面来源、审核备注、审核人和审核时间。
+- 已新增文档 `docs/review-workflow.md`。
+- 已更新 `docs/export-excel.md`、`docs/CURRENT_STATUS.md`。
+
+本阶段未接真实搜索 API，未做批量自动图片生成，未新增登录 / 权限系统，未引入复杂状态机库，未升级 Prisma。
+
+检查结果：
+- 待执行阶段 13 收尾命令。

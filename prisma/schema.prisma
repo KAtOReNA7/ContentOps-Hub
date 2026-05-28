@@ -21,6 +21,16 @@ model Work {
   currentFinish  Float?
   notes          String?
   status         WorkStatus       @default(imported)
+  reviewStatus   String           @default("pending_review")
+  finalTitle     String?
+  finalIntro     String?
+  finalCoverUrl  String?
+  finalCoverAssetId String?
+  finalCoverRenderId String?
+  finalCoverSource String?
+  reviewNote    String?
+  reviewedAt    DateTime?
+  reviewerName  String?
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
   analyses        AnalysisResult[]

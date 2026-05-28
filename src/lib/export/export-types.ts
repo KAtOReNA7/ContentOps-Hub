@@ -9,6 +9,14 @@ export type ExportWorkRow = {
   "当前完播率 currentFinish": string;
   "封面文件名 coverFileName": string;
   "封面地址 remoteUrl": string;
+  "审核状态": string;
+  "最终书名": string;
+  "最终简介": string;
+  "最终封面地址": string;
+  "最终封面来源": string;
+  "审核备注": string;
+  "审核人": string;
+  "审核时间": string;
   "识别匹配作品名": string;
   "识别匹配作者": string;
   "识别置信度": string;

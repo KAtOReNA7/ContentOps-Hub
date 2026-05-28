@@ -46,6 +46,20 @@ const workInclude = {
 
 type WorkForExport = Prisma.WorkGetPayload<{ include: typeof workInclude }>;
 
+const reviewStatusLabels: Record<string, string> = {
+  pending_review: "待审核",
+  approved: "已采用",
+  rejected: "已退回",
+  on_hold: "暂缓",
+  needs_revision: "需修改",
+};
+
+const finalCoverSourceLabels: Record<string, string> = {
+  original_cover: "原封面",
+  local_sharp: "原图换标题",
+  chatgpt_image2: "ChatGPT Image2 重绘",
+};
+
 export async function buildAllWorksExport(): Promise<ExportWorkbookPayload> {
   const works = await prisma.work.findMany({
     include: workInclude,
@@ -99,6 +113,7 @@ function toExportRow(work: WorkForExport): ExportWorkRow {
   const introVariantRaw = safeJsonParse<IntroVariantSuggestion | string | null>(generation?.introVariantJson, null);
   const introVariant = typeof introVariantRaw === "string" ? null : introVariantRaw;
   const introVariantParseError = typeof introVariantRaw === "string" ? introVariantRaw : "";
+  const suggestedIntro = introVariantParseError || text(introVariant?.intro);
   const coverPrompts = safeJsonParse<CoverPromptSuggestion[] | string>(generation?.coverPromptsJson, []);
   const generationEvidence = safeJsonParse<string[]>(generation?.evidenceJson, []);
   const coverStrengths = safeJsonParse<string[]>(coverEvaluation?.strengthsJson, []);
@@ -117,6 +132,16 @@ function toExportRow(work: WorkForExport): ExportWorkRow {
     "当前完播率 currentFinish": percent(work.currentFinish),
     "封面文件名 coverFileName": text(work.coverFileName),
     "封面地址 remoteUrl": text(coverAsset?.remoteUrl ?? work.coverUrl),
+    "审核状态": reviewStatusLabels[work.reviewStatus] ?? work.reviewStatus,
+    "最终书名": text(work.finalTitle) || work.title,
+    "最终简介": text(work.finalIntro) || suggestedIntro || work.description,
+    "最终封面地址": text(work.finalCoverUrl),
+    "最终封面来源": work.finalCoverSource
+      ? finalCoverSourceLabels[work.finalCoverSource] ?? work.finalCoverSource
+      : "",
+    "审核备注": text(work.reviewNote),
+    "审核人": text(work.reviewerName),
+    "审核时间": work.reviewedAt ? exportDateFormatter.format(work.reviewedAt) : "",
     "识别匹配作品名": finalMatchParseError || text(finalMatch?.title),
     "识别匹配作者": finalMatchParseError || text(finalMatch?.author),
     "识别置信度": decimal(identification?.confidence),
