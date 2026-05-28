@@ -92,6 +92,9 @@ export function buildWorkWhere(filters: ExportWorkFilters): Prisma.WorkWhereInpu
   if (filters.title?.trim()) {
     and.push({ title: { contains: filters.title.trim() } });
   }
+  if (filters.externalId?.trim()) {
+    and.push({ externalId: { contains: filters.externalId.trim() } });
+  }
   if (filters.author?.trim()) {
     and.push({ author: { contains: filters.author.trim() } });
   }
@@ -138,7 +141,7 @@ export function toExportRow(work: WorkForExport): ExportWorkRow {
   const finalCoverUrl = text(work.finalCoverUrl);
 
   return {
-    "作品ID externalId": text(work.externalId),
+    "作品 ID": text(work.externalId),
     "原书名 title": work.title,
     "作者 author": text(work.author),
     "品类 category": text(work.category),

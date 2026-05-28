@@ -73,7 +73,8 @@ export default async function DashboardPage() {
         />
       </section>
 
-      <section className="grid gap-4 md:grid-cols-4">
+      <section className="grid gap-4 md:grid-cols-5">
+        <QuickAction description="不依赖 Excel，直接录入单本作品。" href="/works/new" title="手动新增作品" />
         <QuickAction description="上传 Excel / CSV，预览校验后写入作品库。" href="/import" title="导入作品" />
         <QuickAction description="检索、筛选并进入单本作品运营流程。" href="/works" title="查看作品" />
         <QuickAction description="聚焦仍需人工确认的作品，推进交付闭环。" href="/works?reviewStatus=pending_review" title="查看待审核" />

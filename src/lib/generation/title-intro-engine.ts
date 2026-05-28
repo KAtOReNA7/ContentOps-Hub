@@ -216,6 +216,7 @@ function collectEvidence(
   if (!normalize(input.work.title)) risks.push("原书名缺失，标题建议可信度降低。");
   if (!normalize(input.work.intro)) risks.push("原简介缺失，简介和封面 prompt 只能保守生成。");
   if (!normalize(input.work.category)) risks.push("品类缺失，题材判断依赖标题和简介。");
+  if (normalize(input.work.remark)) evidence.push("运营备注已纳入书名、简介和封面 prompt 生成上下文。");
   if (input.identification?.risks.length) {
     risks.push(...input.identification.risks.map((risk) => `识别风险：${risk}`));
   }

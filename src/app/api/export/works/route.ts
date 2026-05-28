@@ -42,6 +42,7 @@ function filtersFromRequest(request: Request): ExportWorkFilters {
   return {
     author: searchParams.get("author") ?? undefined,
     category: searchParams.get("category") ?? undefined,
+    externalId: searchParams.get("externalId") ?? undefined,
     ids,
     rating: searchParams.get("rating") ?? undefined,
     reviewStatus: searchParams.get("reviewStatus") ?? undefined,

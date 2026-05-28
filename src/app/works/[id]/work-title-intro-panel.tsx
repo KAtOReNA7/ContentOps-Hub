@@ -122,7 +122,7 @@ export function WorkTitleIntroPanel({ workId }: WorkTitleIntroPanelProps) {
     <section className="rounded-lg border border-stone-200 bg-white p-5">
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div>
-          <h2 className="font-semibold text-stone-950">书名和简介优化 Mock</h2>
+          <h2 className="font-semibold text-stone-950">书名和简介优化</h2>
           <p className="mt-1 text-sm text-stone-600">
             状态：{isLoading ? "读取中" : generation ? "已有生成结果" : "暂无书名/简介优化结果"}
           </p>
@@ -247,7 +247,7 @@ export function WorkTitleIntroPanel({ workId }: WorkTitleIntroPanelProps) {
             )}
           </div>
 
-          <TextList title="风险点" items={generation.risks} emptyText="暂无明显风险" />
+          <TextList title="风险提示" items={generation.risks} emptyText="暂无明显风险" />
           <TextList title="证据说明" items={generation.evidence} emptyText="暂无证据说明" />
         </div>
       ) : null}

@@ -37,6 +37,8 @@ const coverColumnAliases = [
   "coverFileName",
 ];
 
+const externalIdColumnAliases = ["作品ID", "作品 ID", "externalId", "sourceWorkId"];
+
 function cellToString(value: unknown): string {
   if (value === null || value === undefined) {
     return "";
@@ -104,7 +106,7 @@ export function titleAuthorKey(title: string, author: string): string {
 export function normalizeImportRow(raw: RawImportRow, index: number): NormalizedImportRow {
   return {
     rowNumber: index + 2,
-    externalId: cellToString(raw["作品ID"]),
+    externalId: cellByAliases(raw, externalIdColumnAliases),
     title: cellToString(raw["原书名"]),
     author: cellToString(raw["作者名"]),
     description: cellToString(raw["原简介"]),
@@ -130,7 +132,8 @@ export function validateImportRows(
     const warnings: string[] = [];
 
     for (const column of requiredImportColumns) {
-      if (!cellToString(raw[column])) {
+      const hasValue = column === "作品ID" ? Boolean(cellByAliases(raw, externalIdColumnAliases)) : Boolean(cellToString(raw[column]));
+      if (!hasValue) {
         errors.push(`缺失必填字段：${column}`);
       }
     }

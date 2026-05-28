@@ -63,7 +63,7 @@ export default async function WorkDetailPage({ params }: WorkDetailPageProps) {
       <section className="grid gap-4 md:grid-cols-3">
         <div className="rounded-lg border border-stone-200 bg-white p-5">
           <p className="text-sm text-stone-500">作品ID</p>
-          <p className="mt-2 text-lg font-semibold text-stone-950">{work.externalId || "-"}</p>
+          <p className="mt-2 text-lg font-semibold text-stone-950">{work.externalId || "未填写"}</p>
         </div>
         <div className="rounded-lg border border-stone-200 bg-white p-5">
           <p className="text-sm text-stone-500">品类</p>
@@ -100,7 +100,14 @@ export default async function WorkDetailPage({ params }: WorkDetailPageProps) {
       </section>
 
       <WorkIdentificationPanel workId={work.id} initialIdentification={initialIdentification} />
-      <WorkRatingPanel workId={work.id} />
+      <WorkRatingPanel
+        identificationStatus={{
+          confirmed: initialIdentification?.confirmed ?? false,
+          confidence: initialIdentification?.confidence ?? null,
+          hasIdentification: Boolean(initialIdentification),
+        }}
+        workId={work.id}
+      />
       <WorkTitleIntroPanel workId={work.id} />
       <WorkCoverPanel workId={work.id} />
       <WorkReviewPanel workId={work.id} />

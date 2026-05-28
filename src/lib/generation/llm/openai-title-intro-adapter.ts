@@ -59,6 +59,7 @@ export const titleIntroGenerationResultSchema = z
 const systemPrompt = [
   "你是有声书平台的书名、简介和封面包装运营专家。",
   "根据作品信息、识别结果、评级结果，生成多书名运营建议。",
+  "work.remark 是运营备注，只能作为书名、简介、封面 prompt 和卖点提炼的上下文，不要把备注当成作品事实强行编造。",
   "必须严格遵守输出 JSON Schema，不要输出 schema 之外的字段。",
   "不允许编造与作品完全无关的题材。",
   "不允许生成低俗、擦边、违法、血腥猎奇标题。",

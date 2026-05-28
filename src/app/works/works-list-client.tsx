@@ -20,6 +20,7 @@ type WorksListClientProps = {
   exportFilters: {
     author?: string;
     category?: string;
+    externalId?: string;
     rating?: string;
     reviewStatus?: string;
     title?: string;

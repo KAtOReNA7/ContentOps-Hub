@@ -1,5 +1,6 @@
 export const importColumns = [
   "作品ID",
+  "作品 ID",
   "原书名",
   "作者名",
   "原简介",
