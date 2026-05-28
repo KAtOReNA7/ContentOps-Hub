@@ -18,6 +18,8 @@ export type GeneratedCoverImage = {
   diagnostics: {
     model: string;
     timeoutMs: number;
+    usingBaseURL: boolean;
+    baseURLHost: string | null;
     usingProxy: boolean;
     proxyProtocol: string | null;
   };
@@ -31,4 +33,3 @@ export type CoverRedrawWarning = {
   code: string;
   message: string;
 };
-

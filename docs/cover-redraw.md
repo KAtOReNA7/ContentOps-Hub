@@ -14,12 +14,24 @@
 
 ```text
 OPENAI_API_KEY=
+OPENAI_BASE_URL=
+OPENAI_TEXT_ENDPOINT=responses
 OPENAI_IMAGE_MODEL=
 OPENAI_IMAGE_TIMEOUT_MS=120000
 OPENAI_PROXY_URL=
 ```
 
 业务层统一 provider 名称为 `chatgpt_image2`。实际 OpenAI 图片模型名由 `OPENAI_IMAGE_MODEL` 配置，适配层负责兼容 OpenAI SDK / API 的底层模型名称。
+
+连接模式：
+
+- 官方 OpenAI 模式：不填 `OPENAI_BASE_URL`。
+- OpenAI 兼容中转站模式：填写 `OPENAI_BASE_URL`，例如 `https://example.com/v1`，并使用中转站 API key。
+- `OPENAI_BASE_URL` 必须是 API 根地址，例如 `https://example.com/v1`，不能填写 `https://example.com/v1/chat/completions` 这类具体接口路径。
+- 文本生成默认使用 `OPENAI_TEXT_ENDPOINT=responses`；如果中转站不支持 Responses API 并报 `404 /v1/responses`，可改为 `OPENAI_TEXT_ENDPOINT=chat_completions`。
+- `OPENAI_BASE_URL` 是 API 目标地址，`OPENAI_PROXY_URL` 是本地代理地址，例如 `socks5h://127.0.0.1:10808`。
+- 中转站模型名必须以中转站后台为准。
+- 图片重绘仍会调用 OpenAI Images 接口，中转站需要支持 `/v1/images/generations`。
 
 缺少 `OPENAI_API_KEY` 或 `OPENAI_IMAGE_MODEL` 时，接口会保存失败状态并返回结构化错误信息，不会泄露 API key。
 
@@ -113,4 +125,3 @@ prompt 目标是中文有声书 / 网文运营封面，强调商业吸引力、�
 11. 刷新页面，确认记录仍存在。
 12. 导出 Excel，确认重绘 provider、状态、prompt、结果摘要和比例生成状态已写入。
 13. 临时移除图片环境变量，确认错误结构化且不泄露密钥。
-

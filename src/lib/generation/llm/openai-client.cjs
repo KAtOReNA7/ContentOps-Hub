@@ -7,6 +7,12 @@ const nodeFetchModule = require("node-fetch");
 
 const DEFAULT_OPENAI_TIMEOUT_MS = 90000;
 const DEFAULT_OPENAI_MAX_OUTPUT_TOKENS = 3000;
+const invalidBaseURLPathHints = [
+  "/chat/completions",
+  "/responses",
+  "/images/generations",
+  "/images/edits",
+];
 
 function loadOpenAIEnvFiles(cwd = process.cwd(), fileNames = [".env", ".env.local"]) {
   for (const fileName of fileNames) {
@@ -19,6 +25,7 @@ function createOpenAIClient(config = {}) {
   const model = config.model ?? process.env.OPENAI_TEXT_MODEL;
   const timeoutMs = parsePositiveInteger(config.timeoutMs ?? process.env.OPENAI_TIMEOUT_MS, DEFAULT_OPENAI_TIMEOUT_MS);
   const proxyConfig = createProxyConfig(config.proxyUrl ?? process.env.OPENAI_PROXY_URL);
+  const baseURLConfig = createBaseURLConfig(config.baseURL ?? process.env.OPENAI_BASE_URL);
 
   if (!apiKey) {
     throw new Error("OPENAI_API_KEY is required for OpenAI requests.");
@@ -31,6 +38,7 @@ function createOpenAIClient(config = {}) {
   const client = new OpenAI({
     apiKey,
     timeout: timeoutMs,
+    ...baseURLConfig.clientOptions,
     ...proxyConfig.clientOptions,
   });
 
@@ -39,10 +47,74 @@ function createOpenAIClient(config = {}) {
     diagnostics: {
       model,
       timeoutMs,
+      usingBaseURL: baseURLConfig.usingBaseURL,
+      baseURLHost: baseURLConfig.baseURLHost,
       usingProxy: proxyConfig.usingProxy,
       proxyProtocol: proxyConfig.proxyProtocol,
     },
   };
+}
+
+function createBaseURLConfig(baseURL) {
+  if (!baseURL) {
+    return {
+      usingBaseURL: false,
+      baseURLHost: null,
+      clientOptions: {},
+    };
+  }
+
+  let parsed;
+
+  try {
+    parsed = new URL(baseURL);
+  } catch {
+    throw new Error("OPENAI_BASE_URL must be a valid URL.");
+  }
+
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    throw new Error("OPENAI_BASE_URL must start with http:// or https://.");
+  }
+
+  const normalizedPath = parsed.pathname.replace(/\/+$/u, "").toLowerCase();
+  const invalidPath = invalidBaseURLPathHints.find((pathHint) => normalizedPath.endsWith(pathHint));
+
+  if (invalidPath) {
+    throw new Error(
+      `OPENAI_BASE_URL 应填写 API 根地址，例如 https://linkapi.shop/v1，不要填写具体接口路径。当前路径疑似包含 ${invalidPath}。`,
+    );
+  }
+
+  return {
+    usingBaseURL: true,
+    baseURLHost: parsed.host,
+    clientOptions: {
+      baseURL,
+    },
+  };
+}
+
+function getBaseURLDiagnostics(baseURL = process.env.OPENAI_BASE_URL) {
+  if (!baseURL) {
+    return {
+      usingBaseURL: false,
+      baseURLHost: null,
+    };
+  }
+
+  try {
+    const parsed = new URL(baseURL);
+
+    return {
+      usingBaseURL: true,
+      baseURLHost: parsed.host,
+    };
+  } catch {
+    return {
+      usingBaseURL: true,
+      baseURLHost: "invalid",
+    };
+  }
 }
 
 function createProxyConfig(proxyUrl) {
@@ -192,6 +264,14 @@ function getErrorDiagnostics(error) {
   };
 }
 
+function isLikelyBaseURLPathError(message) {
+  return (
+    typeof message === "string" &&
+    (message.includes("/chat/completions/responses") ||
+      message.includes("/chat/completions/images/generations"))
+  );
+}
+
 function parsePositiveIntegerFromEnv(name, fallback) {
   return parsePositiveInteger(process.env[name], fallback);
 }
@@ -199,11 +279,14 @@ function parsePositiveIntegerFromEnv(name, fallback) {
 module.exports = {
   DEFAULT_OPENAI_MAX_OUTPUT_TOKENS,
   DEFAULT_OPENAI_TIMEOUT_MS,
+  createBaseURLConfig,
   createOpenAIClient,
   createProxyConfig,
+  getBaseURLDiagnostics,
   getErrorDiagnostics,
   getErrorCode,
   getErrorStatus,
+  isLikelyBaseURLPathError,
   loadOpenAIEnvFiles,
   parsePositiveIntegerFromEnv,
 };

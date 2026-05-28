@@ -74,6 +74,8 @@ export const DEFAULT_OPENAI_TIMEOUT_MS = 90_000;
 type OpenAIClientDiagnostics = {
   model: string;
   timeoutMs: number;
+  usingBaseURL: boolean;
+  baseURLHost: string | null;
   usingProxy: boolean;
   proxyProtocol: string | null;
 };
@@ -88,6 +90,7 @@ const {
   DEFAULT_OPENAI_MAX_OUTPUT_TOKENS,
   createOpenAIClient,
   getErrorDiagnostics,
+  isLikelyBaseURLPathError,
   parsePositiveIntegerFromEnv,
 } = require("./openai-client.cjs") as {
   DEFAULT_OPENAI_MAX_OUTPUT_TOKENS: number;
@@ -101,18 +104,23 @@ const {
     causeCode: string | null;
     causeMessage: string | null;
   };
+  isLikelyBaseURLPathError: (message: string) => boolean;
   parsePositiveIntegerFromEnv: (name: string, fallback: number) => number;
 };
+
+type OpenAITextEndpoint = "responses" | "chat_completions";
 
 export class OpenAITitleIntroTimeoutError extends Error {
   constructor(
     public readonly timeoutMs: number,
+    public readonly usingBaseURL: boolean,
+    public readonly baseURLHost: string | null,
     public readonly usingProxy: boolean,
     public readonly proxyProtocol: string | null,
     cause?: unknown,
   ) {
     super(
-      `OpenAI request timed out after ${timeoutMs} ms. usingProxy=${usingProxy}, proxyProtocol=${proxyProtocol ?? "none"}. 建议检查 OPENAI_PROXY_URL、网络、代理、模型延迟，或换用更快模型。`,
+      `OpenAI request timed out after ${timeoutMs} ms. usingBaseURL=${usingBaseURL}, baseURLHost=${baseURLHost ?? "none"}, usingProxy=${usingProxy}, proxyProtocol=${proxyProtocol ?? "none"}. 建议检查 OPENAI_BASE_URL、OPENAI_PROXY_URL、网络、代理、模型延迟，或换用更快模型。`,
       { cause },
     );
     this.name = "OpenAITitleIntroTimeoutError";
@@ -124,6 +132,8 @@ export class OpenAITitleIntroRequestError extends Error {
     message: string,
     public readonly model: string,
     public readonly timeoutMs: number,
+    public readonly usingBaseURL: boolean,
+    public readonly baseURLHost: string | null,
     public readonly usingProxy: boolean,
     public readonly proxyProtocol: string | null,
     public readonly status: number | null,
@@ -145,6 +155,10 @@ function buildUserPrompt(input: TitleIntroGenerationInput) {
     "返回值必须与 TitleIntroGenerationResult 完全兼容。",
     JSON.stringify(input, null, 2),
   ].join("\n\n");
+}
+
+function resolveTextEndpoint(): OpenAITextEndpoint {
+  return process.env.OPENAI_TEXT_ENDPOINT === "chat_completions" ? "chat_completions" : "responses";
 }
 
 function parseOpenAIResult(outputText: string): TitleIntroGenerationResult {
@@ -172,49 +186,35 @@ export async function generateTitleIntroWithOpenAI(
   config: OpenAITitleIntroAdapterConfig = {},
 ): Promise<TitleIntroGenerationResult> {
   const { client, diagnostics } = createOpenAIClient(config);
-  const { model, timeoutMs, usingProxy, proxyProtocol } = diagnostics;
+  const { model, timeoutMs, usingBaseURL, baseURLHost, usingProxy, proxyProtocol } = diagnostics;
   const maxOutputTokens = parsePositiveIntegerFromEnv(
     "OPENAI_TITLE_INTRO_MAX_OUTPUT_TOKENS",
     DEFAULT_OPENAI_MAX_OUTPUT_TOKENS,
   );
-
-  let response: Awaited<ReturnType<typeof client.responses.create>>;
+  const endpoint = resolveTextEndpoint();
+  let outputText = "";
 
   try {
-    response = await client.responses.create({
-      model,
-      input: [
-        {
-          role: "system",
-          content: systemPrompt,
-        },
-        {
-          role: "user",
-          content: buildUserPrompt(input),
-        },
-      ],
-      text: {
-        format: {
-          type: "json_schema",
-          name: "title_intro_generation_result",
-          description: "Structured title, intro, and cover prompt suggestions for Chinese audiobook operations.",
-          schema: titleIntroGenerationJsonSchema,
-          strict: true,
-        },
-      },
-      max_output_tokens: maxOutputTokens,
-    });
+    outputText =
+      endpoint === "chat_completions"
+        ? await generateWithChatCompletions(client, model, input, maxOutputTokens)
+        : await generateWithResponses(client, model, input, maxOutputTokens);
   } catch (error) {
     if (isTimeoutError(error)) {
-      throw new OpenAITitleIntroTimeoutError(timeoutMs, usingProxy, proxyProtocol, error);
+      throw new OpenAITitleIntroTimeoutError(timeoutMs, usingBaseURL, baseURLHost, usingProxy, proxyProtocol, error);
     }
 
     const errorDiagnostics = getErrorDiagnostics(error);
+    const message = isLikelyBaseURLPathError(errorDiagnostics.errorMessage)
+      ? `${errorDiagnostics.errorMessage}. OPENAI_BASE_URL 疑似填写了完整接口地址，请改成根 API 地址，例如 https://linkapi.shop/v1。`
+      : errorDiagnostics.errorMessage;
 
     throw new OpenAITitleIntroRequestError(
-      errorDiagnostics.errorMessage,
+      message,
       model,
       timeoutMs,
+      usingBaseURL,
+      baseURLHost,
       usingProxy,
       proxyProtocol,
       errorDiagnostics.status,
@@ -227,11 +227,71 @@ export async function generateTitleIntroWithOpenAI(
     );
   }
 
-  if (!response.output_text) {
+  if (!outputText) {
     throw new Error("OpenAI title/intro response did not include output_text.");
   }
 
-  return parseOpenAIResult(response.output_text);
+  return parseOpenAIResult(outputText);
+}
+
+async function generateWithResponses(
+  client: OpenAI,
+  model: string,
+  input: TitleIntroGenerationInput,
+  maxOutputTokens: number,
+): Promise<string> {
+  const response = await client.responses.create({
+    model,
+    input: [
+      {
+        role: "system",
+        content: systemPrompt,
+      },
+      {
+        role: "user",
+        content: buildUserPrompt(input),
+      },
+    ],
+    text: {
+      format: {
+        type: "json_schema",
+        name: "title_intro_generation_result",
+        description: "Structured title, intro, and cover prompt suggestions for Chinese audiobook operations.",
+        schema: titleIntroGenerationJsonSchema,
+        strict: true,
+      },
+    },
+    max_output_tokens: maxOutputTokens,
+  });
+
+  return response.output_text || "";
+}
+
+async function generateWithChatCompletions(
+  client: OpenAI,
+  model: string,
+  input: TitleIntroGenerationInput,
+  maxOutputTokens: number,
+): Promise<string> {
+  const response = await client.chat.completions.create({
+    model,
+    messages: [
+      {
+        role: "system",
+        content: systemPrompt,
+      },
+      {
+        role: "user",
+        content: buildUserPrompt(input),
+      },
+    ],
+    response_format: {
+      type: "json_object",
+    },
+    max_tokens: maxOutputTokens,
+  });
+
+  return response.choices[0]?.message?.content || "";
 }
 
 function isTimeoutError(error: unknown): boolean {

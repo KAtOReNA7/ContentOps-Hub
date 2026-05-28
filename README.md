@@ -33,6 +33,7 @@
 | 封面资产 | 已完成 | 支持本地上传与导入远程封面 URL |
 | 封面评估 | 已完成 | 输出评分、评级、处理策略、人工确认 |
 | 原图换标题 | 已完成 | 基于原封面生成 1:1 / 3:4 新版标题封面 |
+| ChatGPT Image2 重绘 | 已完成 | 针对 redraw_cover 策略，成本确认后手动生成 |
 | Excel 导出 | 已完成 | 支持单本和全部作品导出 |
 
 ## 工作流
@@ -45,7 +46,8 @@ flowchart LR
   D --> E["书名 / 简介 / 封面 Prompt 生成"]
   E --> F["封面评估与策略确认"]
   F --> G["原图换标题 / 版式优化"]
-  G --> H["Excel 运营结果导出"]
+  G --> H["ChatGPT Image2 重绘"]
+  H --> I["Excel 运营结果导出"]
 ```
 
 ## 技术架构
@@ -60,6 +62,7 @@ flowchart TB
   Mock --> Rating["Rating Engine"]
   Mock --> Cover["Cover Evaluation"]
   File --> Render["Sharp Cover Renderer"]
+  API --> Image2["ChatGPT Image2 Provider, Manual"]
 ```
 
 ## 技术栈
@@ -113,10 +116,14 @@ npm run test:openai-title-intro
 
 ```env
 OPENAI_API_KEY=
+OPENAI_BASE_URL=
 OPENAI_TEXT_MODEL=
+OPENAI_TEXT_ENDPOINT=responses
 OPENAI_TIMEOUT_MS=90000
 OPENAI_PROXY_URL=
 OPENAI_TITLE_INTRO_MAX_OUTPUT_TOKENS=3000
+OPENAI_IMAGE_MODEL=
+OPENAI_IMAGE_TIMEOUT_MS=120000
 ```
 
 安全约束：
@@ -124,7 +131,18 @@ OPENAI_TITLE_INTRO_MAX_OUTPUT_TOKENS=3000
 - 不要提交 `.env` 或 `.env.local`
 - 不要把 API key 写入代码
 - OpenAI 仅在用户主动选择 OpenAI provider 时调用
+- ChatGPT Image2 仅在用户确认成本后手动调用
 - 默认生成 provider 仍为 Mock
+
+OpenAI 连接模式：
+
+- 官方 OpenAI：不填 `OPENAI_BASE_URL`，只配置官方 API key 和模型名。
+- OpenAI 兼容中转站：填写 `OPENAI_BASE_URL`，例如 `https://example.com/v1`，并使用中转站提供的 API key。
+- `OPENAI_BASE_URL` 必须是 API 根地址，例如 `https://example.com/v1`，不要填写 `https://example.com/v1/chat/completions` 这类具体接口路径。
+- 官方 OpenAI 文本生成推荐 `OPENAI_TEXT_ENDPOINT=responses`。
+- 如果中转站报 `404 /v1/responses` 或不支持 Responses API，可以改为 `OPENAI_TEXT_ENDPOINT=chat_completions`。
+- `OPENAI_BASE_URL` 是 API 目标地址，`OPENAI_PROXY_URL` 是本地网络代理地址，两者不要混用。
+- 中转站可用模型名必须以中转站后台说明为准。
 
 ## 文件与数据
 
@@ -164,6 +182,7 @@ sample/input-template.xlsx
 - 封面评估结果
 - 人工确认结果
 - 新版封面结果
+- ChatGPT Image2 重绘结果摘要
 
 ## 后续规划
 
@@ -176,7 +195,6 @@ sample/input-template.xlsx
 ### 中期能力
 
 - **真实搜索 API**：替换 MockSearchAdapter，增强作品识别准确率
-- **图片生成 API**：仅对 `redraw_cover` 策略作品手动触发生成
 - **单本作品录入**：不依赖 Excel，也能快速新增作品
 - **批量任务中心**：展示任务进度、单条失败原因和重试入口
 
@@ -197,6 +215,7 @@ timeline
     Mock 分析 : 识别, 评级, 生成建议
     OpenAI 文本 : provider 切换, 代理支持
     封面链路 : 上传, 评估, 原图换标题
+    图片重绘 : ChatGPT Image2, 手动确认
     Excel 导出 : 单本导出, 全量导出
   section 下一阶段
     审核状态 : 采用, 暂缓, 退回, 备注
@@ -204,7 +223,7 @@ timeline
     结果管理 : 最终书名, 最终简介, 最终封面
   section 后续增强
     搜索识别 : 接真实搜索服务
-    图片生成 : redraw_cover 手动触发
+    批量能力 : 任务中心, 重试, 成本控制
     效果回流 : 数据复盘与规则优化
 ```
 
@@ -220,5 +239,5 @@ timeline
 
 ## 当前状态
 
-项目已经形成“导入 -> 分析 -> 生成 -> 封面处理 -> 导出”的 MVP 闭环。下一步建议优先完善人工审核状态和导出交付包，而不是直接进入高成本的图片生成批量能力。
+项目已经形成“导入 -> 分析 -> 生成 -> 封面处理 -> 重绘 -> 导出”的 MVP 闭环。下一步建议优先完善人工审核状态和导出交付包，而不是直接进入高成本的批量生成能力。
 

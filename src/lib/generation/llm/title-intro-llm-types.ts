@@ -8,5 +8,6 @@ export type OpenAITitleIntroAdapterConfig = {
   apiKey?: string;
   model?: string;
   timeoutMs?: number;
+  baseURL?: string;
   proxyUrl?: string;
 };

@@ -7,7 +7,18 @@ import type {
 } from "@/lib/image-generation/image-generation-types";
 
 const require = createRequire(import.meta.url);
-const { createProxyConfig, getErrorDiagnostics, parsePositiveIntegerFromEnv } = require("../generation/llm/openai-client.cjs") as {
+const {
+  createBaseURLConfig,
+  createProxyConfig,
+  getErrorDiagnostics,
+  isLikelyBaseURLPathError,
+  parsePositiveIntegerFromEnv,
+} = require("../generation/llm/openai-client.cjs") as {
+  createBaseURLConfig: (baseURL?: string) => {
+    usingBaseURL: boolean;
+    baseURLHost: string | null;
+    clientOptions: Record<string, unknown>;
+  };
   createProxyConfig: (proxyUrl?: string) => {
     usingProxy: boolean;
     proxyProtocol: string | null;
@@ -22,6 +33,7 @@ const { createProxyConfig, getErrorDiagnostics, parsePositiveIntegerFromEnv } = 
     causeCode: string | null;
     causeMessage: string | null;
   };
+  isLikelyBaseURLPathError: (message: string) => boolean;
   parsePositiveIntegerFromEnv: (name: string, fallback: number) => number;
 };
 
@@ -47,6 +59,8 @@ export class OpenAIImage2RequestError extends Error {
     public readonly diagnostics: {
       model: string;
       timeoutMs: number;
+      usingBaseURL: boolean;
+      baseURLHost: string | null;
       usingProxy: boolean;
       proxyProtocol: string | null;
       status: number | null;
@@ -77,15 +91,19 @@ export class OpenAIImage2Adapter implements ImageGenerationAdapter {
     }
 
     const timeoutMs = parsePositiveIntegerFromEnv("OPENAI_IMAGE_TIMEOUT_MS", defaultImageTimeoutMs);
+    const baseURLConfig = createBaseURLConfig(process.env.OPENAI_BASE_URL);
     const proxyConfig = createProxyConfig(process.env.OPENAI_PROXY_URL);
     const client = new OpenAI({
       apiKey,
       timeout: timeoutMs,
+      ...baseURLConfig.clientOptions,
       ...proxyConfig.clientOptions,
     });
     const diagnostics = {
       model,
       timeoutMs,
+      usingBaseURL: baseURLConfig.usingBaseURL,
+      baseURLHost: baseURLConfig.baseURLHost,
       usingProxy: proxyConfig.usingProxy,
       proxyProtocol: proxyConfig.proxyProtocol,
     };
@@ -103,9 +121,12 @@ export class OpenAIImage2Adapter implements ImageGenerationAdapter {
       } as never)) as OpenAIImageResponse;
     } catch (error) {
       const errorDiagnostics = getErrorDiagnostics(error);
+      const errorMessage = isLikelyBaseURLPathError(errorDiagnostics.errorMessage)
+        ? `${errorDiagnostics.errorMessage}. OPENAI_BASE_URL 疑似填写了完整接口地址，请改成根 API 地址，例如 https://linkapi.shop/v1。`
+        : errorDiagnostics.errorMessage;
 
       throw new OpenAIImage2RequestError(
-        errorDiagnostics.errorMessage,
+        errorMessage,
         {
           ...diagnostics,
           status: errorDiagnostics.status,
@@ -152,4 +173,3 @@ export class OpenAIImage2Adapter implements ImageGenerationAdapter {
 function sizeForRatio(ratio: GenerateCoverImageParams["ratio"]): "1024x1024" | "1024x1536" {
   return ratio === "1:1" ? "1024x1024" : "1024x1536";
 }
-

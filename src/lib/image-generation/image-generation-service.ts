@@ -212,7 +212,13 @@ function formatImageGenerationError(error: unknown): string {
   const details = error instanceof Error && "diagnostics" in error ? error.diagnostics : null;
 
   if (!details || typeof details !== "object") {
-    return error.message;
+    const baseURLDiagnostics = getBaseURLDiagnostics();
+
+    return [
+      error.message,
+      `usingBaseURL: ${String(baseURLDiagnostics.usingBaseURL)}`,
+      `baseURLHost: ${baseURLDiagnostics.baseURLHost ?? "none"}`,
+    ].join(" | ");
   }
 
   const diagnostics = details as Record<string, unknown>;
@@ -221,6 +227,8 @@ function formatImageGenerationError(error: unknown): string {
     error.message,
     `model: ${String(diagnostics.model ?? "")}`,
     `timeoutMs: ${String(diagnostics.timeoutMs ?? "")}`,
+    `usingBaseURL: ${String(diagnostics.usingBaseURL ?? "")}`,
+    `baseURLHost: ${String(diagnostics.baseURLHost ?? "none")}`,
     `usingProxy: ${String(diagnostics.usingProxy ?? "")}`,
     `proxyProtocol: ${String(diagnostics.proxyProtocol ?? "none")}`,
     diagnostics.status === null || diagnostics.status === undefined ? "" : `status: ${String(diagnostics.status)}`,
@@ -231,4 +239,27 @@ function formatImageGenerationError(error: unknown): string {
   ]
     .filter(Boolean)
     .join(" | ");
+}
+
+function getBaseURLDiagnostics(): { usingBaseURL: boolean; baseURLHost: string | null } {
+  const baseURL = process.env.OPENAI_BASE_URL;
+
+  if (!baseURL) {
+    return {
+      usingBaseURL: false,
+      baseURLHost: null,
+    };
+  }
+
+  try {
+    return {
+      usingBaseURL: true,
+      baseURLHost: new URL(baseURL).host,
+    };
+  } catch {
+    return {
+      usingBaseURL: true,
+      baseURLHost: "invalid",
+    };
+  }
 }

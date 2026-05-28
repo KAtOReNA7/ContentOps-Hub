@@ -431,9 +431,11 @@ function mapGenerationError(error: unknown): { message: string; errors: string[]
       message: "OpenAI request timed out.",
       errors: [
         `OpenAI request timed out after ${error.timeoutMs} ms.`,
+        `usingBaseURL: ${error.usingBaseURL}`,
+        `baseURLHost: ${error.baseURLHost ?? "none"}`,
         `usingProxy: ${error.usingProxy}`,
         `proxyProtocol: ${error.proxyProtocol ?? "none"}`,
-        "建议检查 OPENAI_PROXY_URL、网络、代理、模型延迟，或换用更快模型。",
+        "建议检查 OPENAI_BASE_URL、OPENAI_PROXY_URL、网络、代理、模型延迟，或换用更快模型。",
       ],
       status: 504,
     };
@@ -452,6 +454,8 @@ function mapGenerationError(error: unknown): { message: string; errors: string[]
         `errorName: ${error.errorName}`,
         `errorMessage: ${error.message}`,
         `timeoutMs: ${error.timeoutMs}`,
+        `usingBaseURL: ${error.usingBaseURL}`,
+        `baseURLHost: ${error.baseURLHost ?? "none"}`,
         `usingProxy: ${error.usingProxy}`,
         `proxyProtocol: ${error.proxyProtocol ?? "none"}`,
         `model: ${error.model}`,
@@ -460,7 +464,7 @@ function mapGenerationError(error: unknown): { message: string; errors: string[]
         error.causeName ? `causeName: ${error.causeName}` : "",
         error.causeCode ? `causeCode: ${error.causeCode}` : "",
         error.causeMessage ? `causeMessage: ${error.causeMessage}` : "",
-        "hint: 确认 npm run dev 已重启，并检查 OPENAI_PROXY_URL 是否与 test:openai-text 使用一致。",
+        "hint: 确认 npm run dev 已重启，并检查 OPENAI_BASE_URL / OPENAI_PROXY_URL 是否与 test:openai-text 使用一致。",
       ].filter(Boolean),
       status: mappedStatus,
     };
@@ -468,10 +472,16 @@ function mapGenerationError(error: unknown): { message: string; errors: string[]
 
   const message = error instanceof Error ? error.message : "Unknown error.";
 
-  if (message.includes("OPENAI_API_KEY") || message.includes("OPENAI_TEXT_MODEL")) {
+  if (message.includes("OPENAI_API_KEY") || message.includes("OPENAI_TEXT_MODEL") || message.includes("OPENAI_BASE_URL")) {
+    const baseURLDiagnostics = getBaseURLDiagnostics();
+
     return {
       message: "OpenAI configuration is missing.",
-      errors: [message],
+      errors: [
+        message,
+        `usingBaseURL: ${baseURLDiagnostics.usingBaseURL}`,
+        `baseURLHost: ${baseURLDiagnostics.baseURLHost ?? "none"}`,
+      ],
       status: 400,
     };
   }
@@ -520,4 +530,27 @@ function getErrorCode(error: unknown): string | null {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function getBaseURLDiagnostics(): { usingBaseURL: boolean; baseURLHost: string | null } {
+  const baseURL = process.env.OPENAI_BASE_URL;
+
+  if (!baseURL) {
+    return {
+      usingBaseURL: false,
+      baseURLHost: null,
+    };
+  }
+
+  try {
+    return {
+      usingBaseURL: true,
+      baseURLHost: new URL(baseURL).host,
+    };
+  } catch {
+    return {
+      usingBaseURL: true,
+      baseURLHost: "invalid",
+    };
+  }
 }
