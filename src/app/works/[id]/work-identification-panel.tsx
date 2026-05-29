@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { CandidateWork, FinalMatch } from "@/lib/adapters/search-adapter";
+import type { CandidateWork, FinalMatch, SearchEvidence, SearchResultItem, SourceSummary } from "@/lib/adapters/search-adapter";
 
 export type WorkIdentificationView = {
   identificationId: string;
@@ -10,6 +10,12 @@ export type WorkIdentificationView = {
   confidence: number;
   reason: string;
   risks: string[];
+  searchProvider: string;
+  searchQuery: string;
+  searchResults: SearchResultItem[];
+  evidence: SearchEvidence[];
+  riskHints: string[];
+  sourceSummary: SourceSummary | null;
   confirmed: boolean;
   confirmedTitle: string | null;
   confirmedAuthor: string | null;
@@ -134,7 +140,7 @@ export function WorkIdentificationPanel({
     <section className="rounded-lg border border-stone-200 bg-white p-5">
       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <div>
-          <h2 className="font-semibold text-stone-950">作品识别 Mock</h2>
+          <h2 className="font-semibold text-stone-950">作品识别与搜索证据</h2>
           <p className="mt-1 text-sm text-stone-600">
             状态：{identification ? (identification.confirmed ? "已人工确认" : "已识别，待确认") : "未识别"}
           </p>
@@ -165,6 +171,44 @@ export function WorkIdentificationPanel({
             <p className="mt-2 text-sm text-stone-600">
               风险：{identification.risks.length ? identification.risks.join("；") : "暂无明显风险"}
             </p>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-3">
+            <InfoCard label="搜索 provider" value={identification.searchProvider || "mock"} />
+            <InfoCard label="搜索 query" value={identification.searchQuery || "-"} />
+            <InfoCard
+              label="来源摘要"
+              value={
+                identification.sourceSummary
+                  ? `原始 ${identification.sourceSummary.rawResultCount ?? identification.searchResults.length} / 有效 ${identification.sourceSummary.normalizedResultCount ?? identification.candidates.length} / 过滤 ${identification.sourceSummary.filteredResultCount ?? 0}`
+                  : "-"
+              }
+            />
+          </div>
+
+          {identification.sourceSummary ? <SourceSummaryPanel summary={identification.sourceSummary} /> : null}
+
+          <div className="rounded-md border border-stone-200 p-4">
+            <p className="font-medium text-stone-950">为什么是这本</p>
+            {identification.evidence.length ? (
+              <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-stone-700">
+                {identification.evidence.map((item, index) => (
+                  <li key={`${item.title}-${index}`}>
+                    {item.detail}
+                    {item.url ? (
+                      <a className="ml-2 text-red-700 hover:text-red-900" href={item.url} rel="noreferrer" target="_blank">
+                        查看来源
+                      </a>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-3 text-sm text-stone-600">暂无搜索证据。</p>
+            )}
+            {identification.riskHints.length ? (
+              <p className="mt-3 text-sm text-amber-700">证据风险：{identification.riskHints.join("；")}</p>
+            ) : null}
           </div>
 
           <div className="rounded-md border border-stone-200 p-4">
@@ -199,42 +243,187 @@ export function WorkIdentificationPanel({
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[980px] text-left text-sm">
-              <thead className="bg-stone-50 text-stone-500">
-                <tr>
-                  <th className="px-3 py-3">候选作品名</th>
-                  <th className="px-3 py-3">作者</th>
-                  <th className="px-3 py-3">来源平台</th>
-                  <th className="px-3 py-3">简介摘要</th>
-                  <th className="px-3 py-3">分数</th>
-                  <th className="px-3 py-3">匹配理由</th>
-                  <th className="px-3 py-3">排除理由</th>
-                  <th className="px-3 py-3">疑似重名</th>
-                </tr>
-              </thead>
-              <tbody>
-                {identification.candidates.map((candidate) => (
-                  <tr className="border-t border-stone-100" key={`${candidate.platform}-${candidate.title}`}>
-                    <td className="px-3 py-3 font-medium text-stone-950">{candidate.title}</td>
-                    <td className="px-3 py-3 text-stone-600">{candidate.author}</td>
-                    <td className="px-3 py-3 text-stone-600">{candidate.platform}</td>
-                    <td className="px-3 py-3 text-stone-600">{candidate.summary}</td>
-                    <td className="px-3 py-3 text-stone-950">{candidate.score}</td>
-                    <td className="px-3 py-3 text-stone-600">{candidate.matchReasons.join("；")}</td>
-                    <td className="px-3 py-3 text-stone-600">
-                      {candidate.excludeReasons.length ? candidate.excludeReasons.join("；") : "暂无明显排除理由"}
-                    </td>
-                    <td className="px-3 py-3 text-stone-600">{candidate.possibleDuplicate ? "是" : "否"}</td>
-                  </tr>
+            {identification.candidates.length ? (
+              <div className="space-y-2">
+                {identification.candidates.map((candidate, index) => (
+                  <details
+                    className="rounded-md border border-stone-200 bg-white px-3 py-2 text-sm"
+                    key={`${candidate.rawRank ?? index}-${candidate.url ?? candidate.platform}-${candidate.title}`}
+                  >
+                    <summary className="cursor-pointer list-none">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="rounded bg-stone-100 px-2 py-1 text-xs text-stone-700">
+                          {candidate.canonicalSourceName ?? candidate.sourceName ?? candidate.platform}
+                        </span>
+                        <span className="max-w-xl truncate font-medium text-stone-950">{candidate.title}</span>
+                        <span className="text-stone-500">作者：{candidate.author}</span>
+                        <span className="text-stone-500">匹配 {candidate.relevanceScore ?? candidate.score}</span>
+                        <span className="text-stone-500">价值信号 {candidate.valueSignalScore ?? 0}</span>
+                        {candidateTags(candidate).map((tag) => (
+                          <span className="rounded bg-red-50 px-2 py-1 text-xs text-red-700" key={tag}>
+                            {tag}
+                          </span>
+                        ))}
+                        {candidate.possibleDuplicate ? <span className="rounded bg-amber-50 px-2 py-1 text-xs text-amber-700">疑似重名</span> : null}
+                        <span className="ml-auto text-xs text-red-700">展开详情</span>
+                      </div>
+                    </summary>
+                    <div className="mt-3 grid gap-2 border-t border-stone-100 pt-3 text-sm text-stone-600 md:grid-cols-2">
+                      <p>完整标题：{candidate.title}</p>
+                      <p>作者：{candidate.author}</p>
+                      <p>sourceCategory：{candidate.sourceCategory ?? candidate.sourceType ?? "unknown"}</p>
+                      <p>canonicalSourceName：{candidate.canonicalSourceName ?? candidate.sourceName ?? candidate.platform}</p>
+                      <p>rawRank：{candidate.rawRank ?? "-"}</p>
+                      <p>relevanceScore：{candidate.relevanceScore ?? "-"}</p>
+                      <p>valueSignalScore：{candidate.valueSignalScore ?? "-"}</p>
+                      <p>
+                        URL：
+                        {candidate.url ? (
+                          <a className="text-red-700 hover:text-red-900" href={candidate.url} rel="noreferrer" target="_blank">
+                            {candidate.url}
+                          </a>
+                        ) : (
+                          "-"
+                        )}
+                      </p>
+                      <p className="md:col-span-2">摘要：{candidate.summary}</p>
+                      <p className="md:col-span-2">匹配理由：{candidate.matchReasons.join("；")}</p>
+                      <p className="md:col-span-2">
+                        排除理由：{candidate.excludeReasons.length ? candidate.excludeReasons.join("；") : "暂无明显排除理由"}
+                      </p>
+                      <p className="md:col-span-2">
+                        IP/热度证据：
+                        {[...(candidate.ipEvidence ?? []).map((item) => item.evidenceText), ...(candidate.heatEvidence ?? []).map((item) => item.evidenceText)].join("；") || "-"}
+                      </p>
+                    </div>
+                  </details>
                 ))}
-              </tbody>
-            </table>
+              </div>
+            ) : (
+              <EmptyCandidateDiagnostics identification={identification} />
+            )}
           </div>
         </div>
       ) : (
         <p className="mt-4 text-sm text-stone-600">尚未运行识别。</p>
       )}
     </section>
+  );
+}
+
+function InfoCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-md border border-stone-200 p-4">
+      <p className="text-sm text-stone-500">{label}</p>
+      <p className="mt-2 break-all text-sm font-medium text-stone-950">{value}</p>
+    </div>
+  );
+}
+
+function candidateTags(candidate: CandidateWork): string[] {
+  const tags = new Set<string>();
+
+  for (const tag of candidate.relevanceTags ?? []) {
+    tags.add(tag);
+  }
+  if (candidate.sourceCategory === "ebook_platform") tags.add("原作平台");
+  if (candidate.sourceCategory === "audio_platform") tags.add("有声书");
+  if (candidate.ipEvidence?.length) tags.add("影视/IP");
+  if (candidate.heatEvidence?.length) tags.add("社媒热度");
+
+  return Array.from(tags).slice(0, 5);
+}
+
+function SourceSummaryPanel({ summary }: { summary: SourceSummary }) {
+  const categories = [
+    { key: "audio_platform", label: "有声书" },
+    { key: "ebook_platform", label: "电子书" },
+    { key: "video_platform", label: "影视/IP" },
+    { key: "social_media", label: "社媒热度" },
+    { key: "encyclopedia", label: "百科" },
+    { key: "news", label: "新闻" },
+    { key: "search_engine", label: "搜索引擎" },
+    { key: "unknown", label: "其他" },
+  ];
+
+  return (
+    <div className="rounded-md border border-stone-200 p-4">
+      <p className="font-medium text-stone-950">来源平台摘要</p>
+      <div className="mt-3 grid gap-2 text-sm text-stone-700 md:grid-cols-4">
+        <p>原始结果：{summary.rawResultCount ?? "-"}</p>
+        <p>有效候选：{summary.normalizedResultCount ?? "-"}</p>
+        <p>过滤结果：{summary.filteredResultCount ?? 0}</p>
+        <p>作者匹配：{summary.authorMatchCount}</p>
+      </div>
+      <div className="mt-3 grid gap-2 text-sm text-stone-700 md:grid-cols-2">
+        {categories.map((item) => {
+          const stat = summary.categorySummary?.find((entry) => entry.sourceCategory === item.key);
+
+          return (
+            <p key={item.key}>
+              {item.label}：{stat?.platformCount ?? 0} 个平台 / {stat?.resultCount ?? 0} 条结果
+            </p>
+          );
+        })}
+      </div>
+      {summary.platformSummary?.length ? (
+        <div className="mt-3 border-t border-stone-100 pt-3 text-sm text-stone-700">
+          <p className="font-medium text-stone-950">平台明细</p>
+          <p className="mt-2">
+            {summary.platformSummary.map((item) => `${item.canonicalSourceName}：${item.resultCount} 条`).join("；")}
+          </p>
+        </div>
+      ) : null}
+      {summary.ipEvidenceCount || summary.heatEvidenceCount ? (
+        <p className="mt-3 text-sm text-red-700">
+          IP 证据 {summary.ipEvidenceCount ?? 0} 条 / 热度证据 {summary.heatEvidenceCount ?? 0} 条
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function EmptyCandidateDiagnostics({ identification }: { identification: WorkIdentificationView }) {
+  const summary = identification.sourceSummary;
+
+  return (
+    <div className="rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+      <p className="font-medium">识别完成，但没有可展示候选。请优先检查搜索结果过滤信息。</p>
+      <dl className="mt-3 grid gap-2 md:grid-cols-2">
+        <div>
+          <dt className="text-amber-700">原始搜索结果数量</dt>
+          <dd>{summary?.rawResultCount ?? identification.searchResults.length}</dd>
+        </div>
+        <div>
+          <dt className="text-amber-700">规范化候选数量</dt>
+          <dd>{summary?.normalizedResultCount ?? identification.candidates.length}</dd>
+        </div>
+        <div>
+          <dt className="text-amber-700">被过滤数量</dt>
+          <dd>{summary?.filteredResultCount ?? 0}</dd>
+        </div>
+        <div>
+          <dt className="text-amber-700">provider / baseURL host</dt>
+          <dd>
+            {identification.searchProvider || "-"} / {summary?.baseURLHost || "-"}
+          </dd>
+        </div>
+        <div className="md:col-span-2">
+          <dt className="text-amber-700">搜索 query</dt>
+          <dd className="break-all">{identification.searchQuery || "-"}</dd>
+        </div>
+        <div className="md:col-span-2">
+          <dt className="text-amber-700">主要过滤原因</dt>
+          <dd>{summary?.filterReasons?.length ? summary.filterReasons.join("；") : "暂无过滤原因记录"}</dd>
+        </div>
+        <div className="md:col-span-2">
+          <dt className="text-amber-700">被排除的 IP / 热度证据</dt>
+          <dd>
+            IP {summary?.excludedIpEvidenceCount ?? 0} 条 / 热度 {summary?.excludedHeatEvidenceCount ?? 0} 条
+          </dd>
+        </div>
+      </dl>
+    </div>
   );
 }
 

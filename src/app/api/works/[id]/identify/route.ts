@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { identifyWorkWithMock } from "@/lib/adapters/search-adapter";
+import { identifyWorkWithConfiguredProvider } from "@/lib/adapters/search-adapter";
 import { prisma } from "@/server/db";
 
 export const runtime = "nodejs";
@@ -20,6 +20,7 @@ export async function POST(_request: Request, { params }: IdentifyRouteProps) {
         description: true,
         coverFileName: true,
         category: true,
+        externalId: true,
         notes: true,
       },
     });
@@ -35,13 +36,14 @@ export async function POST(_request: Request, { params }: IdentifyRouteProps) {
       );
     }
 
-    const result = identifyWorkWithMock({
+    const result = await identifyWorkWithConfiguredProvider({
       title: work.title,
       author: work.author,
       intro: work.description,
       category: work.category,
       coverFileName: work.coverFileName,
       remark: work.notes,
+      externalId: work.externalId,
     });
     const saved = await prisma.workIdentification.create({
       data: {
@@ -51,6 +53,12 @@ export async function POST(_request: Request, { params }: IdentifyRouteProps) {
         confidence: result.confidence,
         reason: result.reason,
         risksJson: JSON.stringify(result.risks),
+        searchProvider: result.searchProvider,
+        searchQuery: result.searchQuery,
+        searchResultsJson: JSON.stringify(result.searchResults),
+        evidenceJson: JSON.stringify(result.evidence),
+        riskHintsJson: JSON.stringify(result.riskHints),
+        sourceSummaryJson: JSON.stringify(result.sourceSummary),
       },
       select: {
         id: true,
@@ -66,6 +74,12 @@ export async function POST(_request: Request, { params }: IdentifyRouteProps) {
         confidence: result.confidence,
         reason: result.reason,
         risks: result.risks,
+        searchProvider: result.searchProvider,
+        searchQuery: result.searchQuery,
+        searchResults: result.searchResults,
+        evidence: result.evidence,
+        riskHints: result.riskHints,
+        sourceSummary: result.sourceSummary,
       },
     });
   } catch (error) {

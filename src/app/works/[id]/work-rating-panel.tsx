@@ -192,13 +192,28 @@ function ratingWorkflowNotice(status: IdentificationStatus, rating: RatingView |
 }
 
 function RatingList({ emptyText, items, title }: { emptyText: string; items: string[]; title: string }) {
+  const classified = items.map((item) => ({ text: item, importance: messageImportance(item) }));
+
   return (
     <div className="rounded-md border border-stone-200 p-4">
       <p className="font-medium text-stone-950">{title}</p>
-      {items.length ? (
+      {classified.length ? (
         <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-stone-700">
-          {items.map((item) => (
-            <li key={item}>{item}</li>
+          {classified.map((item) => (
+            <li className={item.importance === "low" ? "text-stone-500" : "text-stone-700"} key={item.text}>
+              <span
+                className={
+                  item.importance === "high"
+                    ? "mr-2 rounded bg-red-50 px-2 py-0.5 text-xs text-red-700"
+                    : item.importance === "medium"
+                      ? "mr-2 rounded bg-amber-50 px-2 py-0.5 text-xs text-amber-700"
+                      : "mr-2 rounded bg-stone-100 px-2 py-0.5 text-xs text-stone-500"
+                }
+              >
+                {item.importance === "high" ? "关键证据" : item.importance === "medium" ? "中权重" : "低权重"}
+              </span>
+              {item.text}
+            </li>
           ))}
         </ul>
       ) : (
@@ -206,6 +221,12 @@ function RatingList({ emptyText, items, title }: { emptyText: string; items: str
       )}
     </div>
   );
+}
+
+function messageImportance(value: string): "high" | "medium" | "low" {
+  if (/影视化|IP|改编|原作平台|晋江|起点|有声书平台|重名|误识别|极低/.test(value)) return "high";
+  if (/全网热度|作者匹配|搜索证据|播放量|点击率|完播率|置信度较低/.test(value)) return "medium";
+  return "low";
 }
 
 async function requestRating(url: string, method: "GET" | "POST"): Promise<Extract<RatingResponse, { success: true }>> {

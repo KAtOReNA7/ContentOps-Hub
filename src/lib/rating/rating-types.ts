@@ -1,4 +1,4 @@
-import type { CandidateWork, FinalMatch } from "@/lib/adapters/search-adapter";
+import type { CandidateWork, FinalMatch, SearchEvidence, SourceSummary } from "@/lib/adapters/search-adapter";
 
 export type WorkRating = "S" | "A" | "B" | "C" | "D";
 
@@ -19,10 +19,13 @@ export type RatingInput = {
   };
   identification: {
     confidence: number | null;
+    confirmed: boolean;
     finalMatch: FinalMatch | null;
     candidates: CandidateWork[];
     risks: string[];
     reason: string | null;
+    evidence: SearchEvidence[];
+    sourceSummary: SourceSummary | null;
   } | null;
 };
 

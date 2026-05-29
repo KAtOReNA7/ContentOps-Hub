@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import type { CandidateWork, FinalMatch } from "@/lib/adapters/search-adapter";
+import { applyCandidateRelevanceGate, type CandidateWork, type FinalMatch, type SearchEvidence, type SourceSummary } from "@/lib/adapters/search-adapter";
 import { evaluateWorkRating } from "@/lib/rating/rating-engine";
 import type { RatingInput, RatingResult } from "@/lib/rating/rating-types";
 import { saveWorkRating } from "@/lib/rating/rating-repository";
@@ -35,7 +35,7 @@ export async function POST(_request: Request, { params }: RatingRouteProps) {
       );
     }
 
-    const { identification, parseRisks } = parseLatestIdentification(work.identifications[0] ?? null);
+    const { identification, parseRisks } = parseLatestIdentification(work, work.identifications[0] ?? null);
     const result = evaluateWorkRating({
       work: {
         id: work.id,
@@ -122,13 +122,27 @@ export async function GET(_request: Request, { params }: RatingRouteProps) {
 }
 
 function parseLatestIdentification(
+  work: {
+    title: string;
+    author: string | null;
+    description: string;
+    category: string | null;
+    coverFileName: string | null;
+    notes: string | null;
+    externalId: string | null;
+  },
   identification:
     | {
         confidence: number;
+        confirmed: boolean;
+        confirmedTitle: string | null;
+        confirmedAuthor: string | null;
         finalMatchJson: string;
         candidatesJson: string;
         risksJson: string;
         reason: string;
+        evidenceJson: string;
+        sourceSummaryJson: string;
       }
     | null,
 ): { identification: RatingInput["identification"]; parseRisks: string[] } {
@@ -136,10 +150,13 @@ function parseLatestIdentification(
     return {
       identification: {
         confidence: null,
+        confirmed: false,
         finalMatch: null,
         candidates: [],
         risks: ["尚未进行作品识别，评级置信度较低"],
         reason: null,
+        evidence: [],
+        sourceSummary: null,
       },
       parseRisks: [],
     };
@@ -155,14 +172,38 @@ function parseLatestIdentification(
   const risks = safeJsonParse<string[]>(identification.risksJson, [], () =>
     parseRisks.push("risksJson 解析失败"),
   );
+  const evidence = safeJsonParse<SearchEvidence[]>(identification.evidenceJson, [], () =>
+    parseRisks.push("evidenceJson 解析失败"),
+  );
+  const sourceSummary = safeJsonParse<SourceSummary | null>(identification.sourceSummaryJson, null, () =>
+    parseRisks.push("sourceSummaryJson 解析失败"),
+  );
+  const canonicalTitle = identification.confirmedTitle || finalMatch?.title || work.title;
+  const canonicalAuthor = identification.confirmedAuthor || finalMatch?.author || work.author;
+  const gated = applyCandidateRelevanceGate(
+    {
+      title: canonicalTitle,
+      author: canonicalAuthor,
+      intro: work.description,
+      category: work.category,
+      coverFileName: work.coverFileName,
+      remark: work.notes,
+      externalId: work.externalId,
+    },
+    candidates,
+    sourceSummary,
+  );
 
   return {
     identification: {
       confidence: identification.confidence,
+      confirmed: identification.confirmed,
       finalMatch,
-      candidates,
+      candidates: gated.candidates,
       risks,
       reason: identification.reason,
+      evidence,
+      sourceSummary: gated.sourceSummary,
     },
     parseRisks,
   };

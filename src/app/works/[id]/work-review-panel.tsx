@@ -220,11 +220,11 @@ export function WorkReviewPanel({ workId }: WorkReviewPanelProps) {
 
           <div className="grid gap-3 rounded-md border border-stone-200 p-4">
             <div className="flex flex-wrap gap-2">
-              {titleOptions.map((option) => (
+              {titleOptions.map((option, index) => (
                 <button
                   className="max-w-full rounded-md border border-stone-300 px-3 py-2 text-left text-sm text-stone-700 hover:border-red-300 hover:bg-red-50"
                   title={option.value}
-                  key={`${option.label}-${option.value}`}
+                  key={`${index}-${option.label}-${option.value}`}
                   onClick={() => setFinalTitle(option.value)}
                   type="button"
                 >
@@ -244,10 +244,10 @@ export function WorkReviewPanel({ workId }: WorkReviewPanelProps) {
 
           <div className="grid gap-3 rounded-md border border-stone-200 p-4">
             <div className="flex flex-wrap gap-2">
-              {introOptions.map((option) => (
+              {introOptions.map((option, index) => (
                 <button
                   className="rounded-md border border-stone-300 px-3 py-2 text-sm text-stone-700 hover:border-red-300 hover:bg-red-50"
-                  key={option.label}
+                  key={`${index}-${option.label}`}
                   onClick={() => setFinalIntro(option.value)}
                   type="button"
                 >
@@ -273,8 +273,8 @@ export function WorkReviewPanel({ workId }: WorkReviewPanelProps) {
               value={selectedCoverUrl}
             >
               <option value="">暂不选择封面</option>
-              {coverOptions.map((option) => (
-                <option key={`${option.source}-${option.url}`} value={option.url}>
+              {coverOptions.map((option, index) => (
+                <option key={`${index}-${option.source}-${option.url}`} value={option.url}>
                   {option.label}
                 </option>
               ))}
