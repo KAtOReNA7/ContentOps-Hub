@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import type { CandidateWork, FinalMatch } from "@/lib/adapters/search-adapter";
+import type { CandidateWork, FinalMatch, SearchEvidence, SourceSummary } from "@/lib/adapters/search-adapter";
 import { evaluateWorkRating } from "@/lib/rating/rating-engine";
 import type { RatingInput, RatingResult } from "@/lib/rating/rating-types";
 import { saveWorkRating } from "@/lib/rating/rating-repository";
@@ -125,10 +125,13 @@ function parseLatestIdentification(
   identification:
     | {
         confidence: number;
+        confirmed: boolean;
         finalMatchJson: string;
         candidatesJson: string;
         risksJson: string;
         reason: string;
+        evidenceJson: string;
+        sourceSummaryJson: string;
       }
     | null,
 ): { identification: RatingInput["identification"]; parseRisks: string[] } {
@@ -136,10 +139,13 @@ function parseLatestIdentification(
     return {
       identification: {
         confidence: null,
+        confirmed: false,
         finalMatch: null,
         candidates: [],
         risks: ["尚未进行作品识别，评级置信度较低"],
         reason: null,
+        evidence: [],
+        sourceSummary: null,
       },
       parseRisks: [],
     };
@@ -155,14 +161,23 @@ function parseLatestIdentification(
   const risks = safeJsonParse<string[]>(identification.risksJson, [], () =>
     parseRisks.push("risksJson 解析失败"),
   );
+  const evidence = safeJsonParse<SearchEvidence[]>(identification.evidenceJson, [], () =>
+    parseRisks.push("evidenceJson 解析失败"),
+  );
+  const sourceSummary = safeJsonParse<SourceSummary | null>(identification.sourceSummaryJson, null, () =>
+    parseRisks.push("sourceSummaryJson 解析失败"),
+  );
 
   return {
     identification: {
       confidence: identification.confidence,
+      confirmed: identification.confirmed,
       finalMatch,
       candidates,
       risks,
       reason: identification.reason,
+      evidence,
+      sourceSummary,
     },
     parseRisks,
   };

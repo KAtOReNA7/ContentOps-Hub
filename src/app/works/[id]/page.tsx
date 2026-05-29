@@ -6,7 +6,7 @@ import { WorkIdentificationPanel, type WorkIdentificationView } from "@/app/work
 import { WorkRatingPanel } from "@/app/works/[id]/work-rating-panel";
 import { WorkReviewPanel } from "@/app/works/[id]/work-review-panel";
 import { WorkTitleIntroPanel } from "@/app/works/[id]/work-title-intro-panel";
-import type { CandidateWork, FinalMatch } from "@/lib/adapters/search-adapter";
+import type { CandidateWork, FinalMatch, SearchEvidence, SearchResultItem, SourceSummary } from "@/lib/adapters/search-adapter";
 import { prisma } from "@/server/db";
 
 type WorkDetailPageProps = {
@@ -37,6 +37,12 @@ export default async function WorkDetailPage({ params }: WorkDetailPageProps) {
         confidence: identification.confidence,
         reason: identification.reason,
         risks: safeJsonParse<string[]>(identification.risksJson, []),
+        searchProvider: identification.searchProvider,
+        searchQuery: identification.searchQuery,
+        searchResults: safeJsonParse<SearchResultItem[]>(identification.searchResultsJson, []),
+        evidence: safeJsonParse<SearchEvidence[]>(identification.evidenceJson, []),
+        riskHints: safeJsonParse<string[]>(identification.riskHintsJson, []),
+        sourceSummary: safeJsonParse<SourceSummary | null>(identification.sourceSummaryJson, null),
         confirmed: identification.confirmed,
         confirmedTitle: identification.confirmedTitle,
         confirmedAuthor: identification.confirmedAuthor,

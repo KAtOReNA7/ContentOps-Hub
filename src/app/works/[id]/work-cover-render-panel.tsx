@@ -163,8 +163,8 @@ export function WorkCoverRenderPanel({ evaluation, workId }: WorkCoverRenderPane
             value={selectedTitle}
           >
             <option value="">选择已生成的新书名</option>
-            {titleOptions.map((option) => (
-              <option key={option.title} value={option.title}>
+            {titleOptions.map((option, index) => (
+              <option key={`${index}-${option.title}`} value={option.title}>
                 {option.title}
               </option>
             ))}

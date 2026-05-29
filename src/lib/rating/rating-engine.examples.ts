@@ -17,10 +17,20 @@ export const ratingExamples: RatingInput[] = [
     },
     identification: {
       confidence: 92,
+      confirmed: true,
       finalMatch: { title: "重生后我在侯府翻身", author: "青枝" },
       candidates: [],
       risks: [],
       reason: "书名、作者、简介均高度匹配",
+      evidence: [],
+      sourceSummary: {
+        audioPlatformCount: 1,
+        ebookPlatformCount: 0,
+        searchEngineCount: 0,
+        socialMediaCount: 0,
+        unknownCount: 0,
+        authorMatchCount: 1,
+      },
     },
   },
   {
@@ -38,10 +48,20 @@ export const ratingExamples: RatingInput[] = [
     },
     identification: {
       confidence: 78,
+      confirmed: false,
       finalMatch: { title: "离婚后前夫天天求复合", author: "山月" },
       candidates: [],
       risks: [],
       reason: "中高置信匹配",
+      evidence: [],
+      sourceSummary: {
+        audioPlatformCount: 1,
+        ebookPlatformCount: 1,
+        searchEngineCount: 0,
+        socialMediaCount: 0,
+        unknownCount: 0,
+        authorMatchCount: 1,
+      },
     },
   },
   {
@@ -59,10 +79,13 @@ export const ratingExamples: RatingInput[] = [
     },
     identification: {
       confidence: 21,
+      confirmed: false,
       finalMatch: null,
       candidates: [],
       risks: ["疑似重名，需要人工确认"],
       reason: "识别置信度很低",
+      evidence: [],
+      sourceSummary: null,
     },
   },
 ];

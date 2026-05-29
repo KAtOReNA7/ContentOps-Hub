@@ -33,8 +33,45 @@ function buildSettings() {
   const apiKeyConfigured = Boolean(process.env.OPENAI_API_KEY);
   const baseUrl = process.env.OPENAI_BASE_URL?.trim();
   const proxyUrl = process.env.OPENAI_PROXY_URL?.trim();
+  const searchBaseUrl = process.env.SEARCH_BASE_URL?.trim();
+  const searchProvider = process.env.SEARCH_PROVIDER?.trim() || "mock";
 
   return [
+    {
+      description: "默认 mock；real/custom 仅在单本作品识别时手动触发，不做批量搜索。",
+      key: "search-provider",
+      label: "SEARCH_PROVIDER",
+      tone: searchProvider === "mock" ? "stone" : "blue",
+      value: searchProvider,
+    },
+    {
+      description: "只判断是否存在，不展示任何前缀或后缀。",
+      key: "search-key",
+      label: "SEARCH_API_KEY",
+      tone: process.env.SEARCH_API_KEY ? "green" : "amber",
+      value: process.env.SEARCH_API_KEY ? "已配置" : "未配置",
+    },
+    {
+      description: "真实搜索 API 根地址或查询入口；页面只显示 host。",
+      key: "search-base-url",
+      label: "SEARCH_BASE_URL",
+      tone: searchBaseUrl ? "blue" : "stone",
+      value: searchBaseUrl ? safeHostLabel(searchBaseUrl) : "未配置",
+    },
+    {
+      description: "单次搜索请求 timeout。",
+      key: "search-timeout",
+      label: "SEARCH_TIMEOUT_MS",
+      tone: "stone",
+      value: process.env.SEARCH_TIMEOUT_MS || "30000",
+    },
+    {
+      description: "单本识别最多读取的搜索结果数量。",
+      key: "search-max-results",
+      label: "SEARCH_MAX_RESULTS",
+      tone: "stone",
+      value: process.env.SEARCH_MAX_RESULTS || "10",
+    },
     {
       description: "只判断是否存在，不展示任何前缀或后缀。",
       key: "openai-key",
@@ -105,6 +142,14 @@ function baseUrlHostLabel(value: string): string {
   try {
     const url = new URL(value);
     return url.hostname.includes("api.openai.com") ? "官方 OpenAI" : `中转站 ${url.hostname}`;
+  } catch {
+    return "已配置";
+  }
+}
+
+function safeHostLabel(value: string): string {
+  try {
+    return new URL(value).host;
   } catch {
     return "已配置";
   }

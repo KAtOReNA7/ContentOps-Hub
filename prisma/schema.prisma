@@ -66,6 +66,12 @@ model WorkIdentification {
   confirmed       Boolean  @default(false)
   confirmedTitle  String?
   confirmedAuthor String?
+  searchProvider  String   @default("mock")
+  searchQuery     String   @default("")
+  searchResultsJson String @default("[]")
+  evidenceJson    String   @default("[]")
+  riskHintsJson   String   @default("[]")
+  sourceSummaryJson String @default("{}")
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 

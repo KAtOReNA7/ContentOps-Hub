@@ -23,14 +23,15 @@ export function evaluateWorkRating(input: RatingInput): RatingResult {
   const category = normalize(input.work.category);
   const identificationConfidence = clamp01((input.identification?.confidence ?? 0) / 100);
 
-  score += scoreIdentification(identificationConfidence, input, reasons, risks, evidence);
+  addIdentificationReliability(identificationConfidence, input, risks, evidence);
   score += scoreTitle(title, reasons, risks, evidence);
   score += scoreIntro(intro, reasons, risks, evidence);
   score += scoreCategory(category, title, intro, reasons, evidence);
+  score += scoreSearchEvidence(input, reasons, risks, evidence);
   score += scoreMetrics(input, reasons, risks, evidence);
   score += scoreDuplicateRisk(input, risks, evidence);
 
-  const cappedScore = applyLowConfidenceCap(clampScore(score), identificationConfidence, risks);
+  const cappedScore = clampScore(score);
   const rating = ratingFromScore(cappedScore);
   const confidence = calculateRatingConfidence(identificationConfidence, input, risks);
   const renameSuggestion = suggestRename(rating, cappedScore, title, category, risks);
@@ -47,38 +48,33 @@ export function evaluateWorkRating(input: RatingInput): RatingResult {
   };
 }
 
-function scoreIdentification(
+function addIdentificationReliability(
   confidence: number,
   input: RatingInput,
-  reasons: string[],
   risks: string[],
   evidence: string[],
-): number {
+): void {
   if (!input.identification) {
-    risks.push("缺少作品识别结果");
-    evidence.push("未提供 identification，评级置信度降低");
-    return -10;
+    risks.push("尚未进行作品识别，当前结果为预评级");
+    evidence.push("识别置信度不参与作品价值打分，仅用于判断评级可信度");
+    return;
   }
 
-  evidence.push(`识别置信度：${Math.round(confidence * 100)}%`);
+  evidence.push(`识别置信度：${Math.round(confidence * 100)}%，仅用于判断评级可信度，不直接加减作品价值分`);
 
-  if (confidence >= 0.85) {
-    reasons.push("作品识别置信度高");
-    return 15;
+  if (input.identification.confirmed) {
+    evidence.push("作品身份已人工确认，评级可作为正式运营参考");
+    return;
   }
 
-  if (confidence >= 0.65) {
-    reasons.push("作品识别置信度中等");
-    return 8;
+  if (confidence < 0.35) {
+    risks.push("识别置信度极低且未人工确认：当前为预评级，不建议直接用于运营决策");
+    return;
   }
 
-  if (confidence >= 0.4) {
-    risks.push("作品识别置信度偏低");
-    return -4;
+  if (confidence < 0.7) {
+    risks.push("识别置信度较低，建议人工确认后再进入正式评级");
   }
-
-  risks.push("作品识别置信度很低");
-  return -14;
 }
 
 function scoreTitle(
@@ -193,6 +189,45 @@ function scoreCategory(
   return matched.score;
 }
 
+function scoreSearchEvidence(
+  input: RatingInput,
+  reasons: string[],
+  risks: string[],
+  evidence: string[],
+): number {
+  const summary = input.identification?.sourceSummary;
+  const candidates = input.identification?.candidates ?? [];
+  let score = 0;
+
+  if (!summary && candidates.length === 0) {
+    evidence.push("暂无搜索证据，平台来源权重未参与评分");
+    return 0;
+  }
+
+  if ((summary?.audioPlatformCount ?? 0) > 0 || candidates.some((candidate) => candidate.sourceType === "audio_platform")) {
+    reasons.push("存在有声书平台搜索证据");
+    evidence.push("有声书平台证据优先于电子书或普通搜索结果");
+    score += 8;
+  } else if ((summary?.ebookPlatformCount ?? 0) > 0 || candidates.some((candidate) => candidate.sourceType === "ebook_platform")) {
+    reasons.push("存在电子书平台证据");
+    evidence.push("电子书平台证据可辅助判断原著认知，但权重低于有声书平台");
+    score += 4;
+  } else {
+    evidence.push("搜索证据主要来自搜索引擎、社交媒体或未知来源，仅作辅助参考");
+    score += 1;
+  }
+
+  if ((summary?.authorMatchCount ?? 0) > 0) {
+    reasons.push("搜索证据中出现作者匹配");
+    evidence.push(`作者匹配证据数量：${summary?.authorMatchCount ?? 0}`);
+    score += 5;
+  } else if (input.work.author) {
+    risks.push("搜索证据中作者匹配不足");
+  }
+
+  return score;
+}
+
 function scoreMetrics(
   input: RatingInput,
   reasons: string[],
@@ -257,20 +292,6 @@ function scoreDuplicateRisk(input: RatingInput, risks: string[], evidence: strin
   return 0;
 }
 
-function applyLowConfidenceCap(score: number, confidence: number, risks: string[]): number {
-  if (confidence < 0.25) {
-    risks.push("识别置信度极低，评级最高限制为 D");
-    return Math.min(score, 39);
-  }
-
-  if (confidence < 0.45) {
-    risks.push("识别置信度较低，评级最高限制为 C");
-    return Math.min(score, 54);
-  }
-
-  return score;
-}
-
 function ratingFromScore(score: number): WorkRating {
   if (score >= 85) return "S";
   if (score >= 70) return "A";
@@ -283,7 +304,9 @@ function calculateRatingConfidence(confidence: number, input: RatingInput, risks
   const hasMetrics = [input.work.playCount, input.work.clickRate, input.work.completionRate].some(
     (value) => value !== null && value !== undefined,
   );
-  const base = confidence * 0.7 + (hasMetrics ? 0.2 : 0.08) + (risks.length > 2 ? 0 : 0.1);
+  const identityConfidence = input.identification?.confirmed ? 0.75 : confidence * 0.45;
+  const sourceConfidence = input.identification?.sourceSummary?.audioPlatformCount ? 0.15 : 0.05;
+  const base = identityConfidence + sourceConfidence + (hasMetrics ? 0.15 : 0.05) + (risks.length > 2 ? 0 : 0.05);
   return Math.round(clamp01(base) * 100) / 100;
 }
 
@@ -294,6 +317,7 @@ function suggestRename(
   category: string,
   risks: string[],
 ): RenameSuggestion {
+  if (risks.some((risk) => risk.includes("识别置信度") && risk.includes("人工确认"))) return "cautious";
   if (rating === "S") return "avoid";
   if (rating === "A") return "cautious";
   if (rating === "B") return "recommended";
@@ -302,7 +326,7 @@ function suggestRename(
       ? "strongly_recommended"
       : "recommended";
   }
-  if (risks.some((risk) => risk.includes("识别置信度极低"))) return "avoid";
+  if (risks.some((risk) => risk.includes("识别置信度极低"))) return "cautious";
   return score >= 35 && includesAny(category, hookWords) ? "recommended" : "cautious";
 }
 
@@ -314,15 +338,17 @@ function renameReason(
   risks: string[],
 ): string {
   if (suggestion === "avoid") {
-    return rating === "S"
+    return rating === "S" || rating === "A"
       ? "作品认知度或综合评分较高，不建议轻易改名。"
       : `投入产出不明，需先处理风险：${risks.join("；") || "信息不足"}`;
   }
   if (suggestion === "cautious") {
-    return "可小范围测试包装优化，但不建议大幅偏离原作认知。";
+    return risks.some((risk) => risk.includes("识别"))
+      ? "识别风险仍需人工确认，确认前只建议谨慎小范围测试。"
+      : "可小范围测试包装优化，但不建议大幅偏离原作认知。";
   }
   if (suggestion === "recommended") {
-    return "作品具备一定卖点，适合通过多书名测试提升点击。";
+    return "作品具备一定卖点，且包装仍有优化空间，适合通过多书名测试提升点击。";
   }
   return `当前包装仍有明显优化空间，且题材/书名存在可提炼卖点：${title || category || "待补充"}`;
 }

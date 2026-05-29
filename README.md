@@ -52,6 +52,7 @@
 | Excel 导出 | 已完成 | 支持单本、全部、当前筛选和勾选导出 |
 | ZIP 交付包 | 已完成 | 包含 Excel 和已有最终封面文件 |
 | 工作流提示 | 已完成 | 未识别、低置信度识别、人工确认识别对应不同评级提示 |
+| 真实搜索适配层 | 进行中 | 默认 Mock，可配置 real/custom 搜索 provider，保存识别证据 |
 
 ## 技术路线
 
@@ -73,7 +74,7 @@ flowchart LR
 
 - 完善筛选导出、勾选导出和 ZIP 交付包的运营体验
 - 增加批量任务结果中心，但继续保持单条失败不影响整体
-- 接入真实搜索 API 前继续保留 MockSearchAdapter
+- 升级真实搜索 provider 的具体厂商适配，同时继续保留 MockSearchAdapter
 - 图片生成保持默认关闭，避免 API 成本失控
 - 增加更完整的人工审核状态流和交付版本管理
 
@@ -103,11 +104,16 @@ npm run db:test
 - `OPENAI_TEXT_MODEL`：文本生成模型
 - `OPENAI_IMAGE_MODEL`：图片生成模型
 - `OPENAI_PROXY_URL`：可选代理，支持 http / socks5 / socks5h
+- `SEARCH_PROVIDER`：搜索 provider，默认 `mock`
+- `SEARCH_API_KEY`：真实搜索 API key，仅服务端读取
+- `SEARCH_BASE_URL`：真实搜索 API 地址
+- `SEARCH_TIMEOUT_MS` / `SEARCH_MAX_RESULTS`：单本识别搜索超时和结果数量
 
 ## 安全策略
 
 - 不把 API key 写入代码
 - 不提交本地数据库、上传图片、`.env`、`.env.local`
 - OpenAI 仅用户主动选择时调用
+- 真实搜索仅用户在单本作品点击识别时触发，默认仍为 mock
 - 图片生成不做默认批量任务
 - 所有外部服务都保留 Mock 或本地 fallback

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { CandidateWork, FinalMatch } from "@/lib/adapters/search-adapter";
+import type { CandidateWork, FinalMatch, SearchEvidence, SearchResultItem, SourceSummary } from "@/lib/adapters/search-adapter";
 
 export type WorkIdentificationView = {
   identificationId: string;
@@ -10,6 +10,12 @@ export type WorkIdentificationView = {
   confidence: number;
   reason: string;
   risks: string[];
+  searchProvider: string;
+  searchQuery: string;
+  searchResults: SearchResultItem[];
+  evidence: SearchEvidence[];
+  riskHints: string[];
+  sourceSummary: SourceSummary | null;
   confirmed: boolean;
   confirmedTitle: string | null;
   confirmedAuthor: string | null;
@@ -134,7 +140,7 @@ export function WorkIdentificationPanel({
     <section className="rounded-lg border border-stone-200 bg-white p-5">
       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <div>
-          <h2 className="font-semibold text-stone-950">作品识别 Mock</h2>
+          <h2 className="font-semibold text-stone-950">作品识别与搜索证据</h2>
           <p className="mt-1 text-sm text-stone-600">
             状态：{identification ? (identification.confirmed ? "已人工确认" : "已识别，待确认") : "未识别"}
           </p>
@@ -165,6 +171,42 @@ export function WorkIdentificationPanel({
             <p className="mt-2 text-sm text-stone-600">
               风险：{identification.risks.length ? identification.risks.join("；") : "暂无明显风险"}
             </p>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-3">
+            <InfoCard label="搜索 provider" value={identification.searchProvider || "mock"} />
+            <InfoCard label="搜索 query" value={identification.searchQuery || "-"} />
+            <InfoCard
+              label="来源摘要"
+              value={
+                identification.sourceSummary
+                  ? `有声书 ${identification.sourceSummary.audioPlatformCount} / 电子书 ${identification.sourceSummary.ebookPlatformCount} / 作者匹配 ${identification.sourceSummary.authorMatchCount}`
+                  : "-"
+              }
+            />
+          </div>
+
+          <div className="rounded-md border border-stone-200 p-4">
+            <p className="font-medium text-stone-950">为什么是这本</p>
+            {identification.evidence.length ? (
+              <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-stone-700">
+                {identification.evidence.map((item, index) => (
+                  <li key={`${item.title}-${index}`}>
+                    {item.detail}
+                    {item.url ? (
+                      <a className="ml-2 text-red-700 hover:text-red-900" href={item.url} rel="noreferrer" target="_blank">
+                        查看来源
+                      </a>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-3 text-sm text-stone-600">暂无搜索证据。</p>
+            )}
+            {identification.riskHints.length ? (
+              <p className="mt-3 text-sm text-amber-700">证据风险：{identification.riskHints.join("；")}</p>
+            ) : null}
           </div>
 
           <div className="rounded-md border border-stone-200 p-4">
@@ -205,6 +247,8 @@ export function WorkIdentificationPanel({
                   <th className="px-3 py-3">候选作品名</th>
                   <th className="px-3 py-3">作者</th>
                   <th className="px-3 py-3">来源平台</th>
+                  <th className="px-3 py-3">来源类型</th>
+                  <th className="px-3 py-3">来源链接</th>
                   <th className="px-3 py-3">简介摘要</th>
                   <th className="px-3 py-3">分数</th>
                   <th className="px-3 py-3">匹配理由</th>
@@ -213,11 +257,21 @@ export function WorkIdentificationPanel({
                 </tr>
               </thead>
               <tbody>
-                {identification.candidates.map((candidate) => (
-                  <tr className="border-t border-stone-100" key={`${candidate.platform}-${candidate.title}`}>
+                {identification.candidates.map((candidate, index) => (
+                  <tr className="border-t border-stone-100" key={`${candidate.rawRank ?? index}-${candidate.platform}-${candidate.title}`}>
                     <td className="px-3 py-3 font-medium text-stone-950">{candidate.title}</td>
                     <td className="px-3 py-3 text-stone-600">{candidate.author}</td>
                     <td className="px-3 py-3 text-stone-600">{candidate.platform}</td>
+                    <td className="px-3 py-3 text-stone-600">{sourceTypeLabel(candidate.sourceType)}</td>
+                    <td className="px-3 py-3 text-stone-600">
+                      {candidate.url ? (
+                        <a className="text-red-700 hover:text-red-900" href={candidate.url} rel="noreferrer" target="_blank">
+                          打开
+                        </a>
+                      ) : (
+                        "-"
+                      )}
+                    </td>
                     <td className="px-3 py-3 text-stone-600">{candidate.summary}</td>
                     <td className="px-3 py-3 text-stone-950">{candidate.score}</td>
                     <td className="px-3 py-3 text-stone-600">{candidate.matchReasons.join("；")}</td>
@@ -236,6 +290,23 @@ export function WorkIdentificationPanel({
       )}
     </section>
   );
+}
+
+function InfoCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-md border border-stone-200 p-4">
+      <p className="text-sm text-stone-500">{label}</p>
+      <p className="mt-2 break-all text-sm font-medium text-stone-950">{value}</p>
+    </div>
+  );
+}
+
+function sourceTypeLabel(value: CandidateWork["sourceType"]): string {
+  if (value === "audio_platform") return "有声书平台";
+  if (value === "ebook_platform") return "电子书平台";
+  if (value === "search_engine") return "搜索引擎";
+  if (value === "social_media") return "社交媒体";
+  return "未知来源";
 }
 
 function formatApiError(
