@@ -40,6 +40,7 @@ model Work {
   coverAssets     CoverAsset[]
   coverEvaluations WorkCoverEvaluation[]
   coverRenders     WorkCoverRender[]
+  batchJobItems     BatchJobItem[]
 }
 
 model AnalysisResult {
@@ -201,6 +202,53 @@ model WorkCoverRender {
   @@index([workId])
   @@index([coverAssetId])
   @@index([titleIntroGenerationId])
+}
+
+model BatchJob {
+  id                  String   @id @default(cuid())
+  type                String
+  status              String   @default("pending")
+  totalCount          Int      @default(0)
+  successCount        Int      @default(0)
+  failedCount         Int      @default(0)
+  skippedCount        Int      @default(0)
+  createdAt           DateTime @default(now())
+  startedAt           DateTime?
+  finishedAt          DateTime?
+  createdBy           String?
+  note                String?
+  costRiskAccepted    Boolean  @default(false)
+  providerSummaryJson String?
+  errorSummary        String?
+  items               BatchJobItem[]
+
+  @@index([status])
+  @@index([type])
+  @@index([createdAt])
+}
+
+model BatchJobItem {
+  id                String   @id @default(cuid())
+  batchJobId        String
+  workId            String
+  step              String
+  status            String   @default("pending")
+  errorMessage      String?
+  errorCode         String?
+  resultSummaryJson String?
+  startedAt         DateTime?
+  finishedAt        DateTime?
+  retryCount        Int      @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  batchJob BatchJob @relation(fields: [batchJobId], references: [id], onDelete: Cascade)
+  work     Work     @relation(fields: [workId], references: [id], onDelete: Cascade)
+
+  @@index([batchJobId])
+  @@index([workId])
+  @@index([status])
+  @@index([step])
 }
 
 enum WorkStatus {

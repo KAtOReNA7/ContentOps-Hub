@@ -1275,3 +1275,40 @@ Prisma 同步：
 - �������ĵ� `docs/search-api.md` �� `docs/rating-v2.md`��
 
 ���׶�δ�� OpenAI �Ӿ��������֣�δ�����������������ģ�δ��Ч��������δĬ������������ʵ���� API��δ���� Prisma��
+
+## 阶段 17 批量任务中心 V1
+
+更新时间：2026-05-30
+
+- 新增 BatchJob / BatchJobItem，用于保存批量任务和单条任务项状态。
+- 新增批量任务 API：创建任务、查询任务列表、查询任务详情、重试失败项。
+- `/analysis` 已改造为批量任务中心，可查看进度、成功/失败/跳过数量和失败项原因。
+- 作品列表支持勾选作品并创建批量识别、批量评级、批量书名简介生成、批量封面评估任务。
+- 批量任务采用本地顺序执行，不引入 Redis / BullMQ / 后台 worker。
+- 单条失败不会中断整批，有成功有失败时任务状态为 partial_success。
+- SEARCH_PROVIDER=real 或 OpenAI 文本批量生成场景需要成本确认。
+- 本阶段未做批量 Image2 重绘，未做 OpenAI 视觉评分，未做效果回流。
+
+### 阶段 17 检查结果
+
+- npm exec -- prisma validate：通过。
+- npm exec -- prisma generate：通过。
+- npm run db:push：通过，仅同步新增 BatchJob / BatchJobItem 表和索引。
+- npm run db:test：通过。
+- npm run typecheck：通过。
+- npm run lint：通过。
+- npm run build：通过。
+- 本地存在 `.env`、`.env.local` 和 `prisma/dev.db`，未出现在 git status 中，不应提交。
+
+## 阶段 17.1 批量操作体验与 provider 选择修复
+
+更新时间：2026-05-30
+
+- 作品列表批量操作区新增书名简介生成方式选择：Mock 规则引擎 / OpenAI 文本生成。
+- 成本确认仅表示用户接受外部 API 费用风险，不再暗示自动切换 OpenAI。
+- 批量 title_intro 创建任务时会把 titleIntroProvider 传给后端。
+- provider=openai 且未确认成本风险时返回 400 中文错误，不执行任务。
+- provider=openai 且缺少 OPENAI_API_KEY 或 OPENAI_TEXT_MODEL 时返回清晰中文错误，不回退 Mock。
+- 批量任务 resultSummaryJson 会记录实际 provider。
+- 作品列表支持 pageSize=50/100，切换后保留筛选条件并回到第 1 页。
+- 作品列表简介默认压缩为 2 行，完整简介可进入详情页查看或 hover 查看。

@@ -7,15 +7,16 @@ type WorksPageProps = {
   searchParams: Promise<{
     author?: string;
     category?: string;
+    externalId?: string;
     page?: string;
+    pageSize?: string;
     rating?: string;
     reviewStatus?: string;
     title?: string;
-    externalId?: string;
   }>;
 };
 
-const pageSize = 10;
+const allowedPageSizes = [50, 100] as const;
 const reviewStatusLabels: Record<string, string> = {
   approved: "已采用",
   needs_revision: "需修改",
@@ -23,12 +24,15 @@ const reviewStatusLabels: Record<string, string> = {
   pending_review: "待审核",
   rejected: "已退回",
 };
-
 const ratingOptions = ["S", "A", "B", "C", "D"];
 
 export default async function WorksPage({ searchParams }: WorksPageProps) {
   const params = await searchParams;
   const page = Math.max(Number(params.page ?? "1") || 1, 1);
+  const requestedPageSize = Number(params.pageSize ?? "50") || 50;
+  const pageSize = allowedPageSizes.includes(requestedPageSize as (typeof allowedPageSizes)[number])
+    ? requestedPageSize
+    : 50;
   const title = params.title?.trim() ?? "";
   const author = params.author?.trim() ?? "";
   const category = params.category?.trim() ?? "";
@@ -69,15 +73,27 @@ export default async function WorksPage({ searchParams }: WorksPageProps) {
     if (category) next.set("category", category);
     if (reviewStatus) next.set("reviewStatus", reviewStatus);
     if (rating) next.set("rating", rating);
+    next.set("pageSize", String(pageSize));
     next.set("page", String(targetPage));
     return `/works?${next.toString()}`;
   };
+  const hiddenFilterInputs = (
+    <>
+      {title ? <input name="title" type="hidden" value={title} /> : null}
+      {author ? <input name="author" type="hidden" value={author} /> : null}
+      {externalId ? <input name="externalId" type="hidden" value={externalId} /> : null}
+      {category ? <input name="category" type="hidden" value={category} /> : null}
+      {reviewStatus ? <input name="reviewStatus" type="hidden" value={reviewStatus} /> : null}
+      {rating ? <input name="rating" type="hidden" value={rating} /> : null}
+      <input name="page" type="hidden" value="1" />
+    </>
+  );
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold text-stone-950">作品列表</h1>
-        <p className="mt-2 text-stone-600">查看已入库作品，支持搜索、筛选、勾选导出和按当前筛选条件导出。</p>
+        <p className="mt-2 text-stone-600">查看已入库作品，支持搜索、筛选、勾选导出和批量任务。</p>
       </div>
 
       <div className="flex flex-wrap gap-3">
@@ -143,25 +159,43 @@ export default async function WorksPage({ searchParams }: WorksPageProps) {
         }))}
       />
 
-      <div className="flex items-center justify-between text-sm text-stone-600">
+      <div className="flex flex-col gap-3 text-sm text-stone-600 md:flex-row md:items-center md:justify-between">
         <span>
           第 {page} / {totalPages} 页，共 {total} 条
         </span>
-        <div className="flex gap-2">
-          <Link
-            aria-disabled={page <= 1}
-            className="rounded-md border border-stone-300 px-3 py-2 aria-disabled:pointer-events-none aria-disabled:opacity-40"
-            href={pageHref(Math.max(page - 1, 1))}
-          >
-            上一页
-          </Link>
-          <Link
-            aria-disabled={page >= totalPages}
-            className="rounded-md border border-stone-300 px-3 py-2 aria-disabled:pointer-events-none aria-disabled:opacity-40"
-            href={pageHref(Math.min(page + 1, totalPages))}
-          >
-            下一页
-          </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          <form className="flex items-center gap-2" method="get">
+            {hiddenFilterInputs}
+            <label className="text-stone-500" htmlFor="pageSize">
+              每页显示
+            </label>
+            <select className="rounded-md border border-stone-300 px-2 py-2 text-sm" defaultValue={pageSize} id="pageSize" name="pageSize">
+              {allowedPageSizes.map((size) => (
+                <option key={size} value={size}>
+                  {size}
+                </option>
+              ))}
+            </select>
+            <button className="rounded-md border border-stone-300 px-3 py-2 hover:bg-stone-50" type="submit">
+              应用
+            </button>
+          </form>
+          <div className="flex gap-2">
+            <Link
+              aria-disabled={page <= 1}
+              className="rounded-md border border-stone-300 px-3 py-2 aria-disabled:pointer-events-none aria-disabled:opacity-40"
+              href={pageHref(Math.max(page - 1, 1))}
+            >
+              上一页
+            </Link>
+            <Link
+              aria-disabled={page >= totalPages}
+              className="rounded-md border border-stone-300 px-3 py-2 aria-disabled:pointer-events-none aria-disabled:opacity-40"
+              href={pageHref(Math.min(page + 1, totalPages))}
+            >
+              下一页
+            </Link>
+          </div>
         </div>
       </div>
     </div>
