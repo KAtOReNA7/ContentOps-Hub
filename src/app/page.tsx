@@ -1,10 +1,16 @@
-import Link from "next/link";
-import { StatusBadge, coverStrategyLabel, reviewStatusLabel } from "@/components/status-badge";
+import { StatusBadge, reviewStatusLabel } from "@/components/status-badge";
+import { ActionCard, EmptyState, PageHeader, SectionCard } from "@/components/ui";
 import { prisma } from "@/server/db";
 
 const ratingOrder = ["S", "A", "B", "C", "D"];
 const strategyOrder = ["keep_and_replace_title", "keep_and_optimize_layout", "redraw_cover"];
 const reviewOrder = ["pending_review", "approved", "needs_revision", "on_hold", "rejected"];
+
+function dashboardCoverStrategyLabel(strategy: string) {
+  if (strategy === "keep_and_replace_title") return "换标题";
+  if (strategy === "keep_and_optimize_layout") return "优化版式";
+  return "重绘";
+}
 
 export default async function DashboardPage() {
   const [
@@ -52,13 +58,12 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-lg border border-stone-200 bg-white p-6">
-        <StatusBadge tone="red">MVP 本地优先</StatusBadge>
-        <h1 className="mt-3 text-3xl font-semibold text-stone-950">内容运营综合管理平台</h1>
-        <p className="mt-2 max-w-3xl text-stone-600">
-          番茄畅听多书名运营辅助工具。当前已覆盖导入、识别、评级、书名简介生成、封面处理、人工审核、批量任务、测试结果回流和 Excel 导出闭环。
-        </p>
-      </section>
+      <SectionCard className="overflow-hidden bg-[linear-gradient(135deg,#ffffff_0%,#f8fbff_100%)]">
+        <div className="mb-4 flex flex-wrap gap-2"><StatusBadge tone="blue">v0.21 运营工作台</StatusBadge><StatusBadge tone="green">本地优先</StatusBadge><StatusBadge>成本受控</StatusBadge></div>
+        <PageHeader eyebrow="ContentOps Hub" title="内容运营综合管理平台" description="番茄畅听多书名运营辅助工具。当前已覆盖导入、识别、评级、书名简介生成、封面处理、人工审核、批量任务、测试结果回流和 Excel 导出闭环。" />
+      </SectionCard>
+
+      {totalWorks === 0 ? <EmptyState title="暂无作品" description="先导入作品清单或手动新增作品，再开始识别、评级和多书名运营流程。" href="/import" action="导入作品" /> : null}
 
       <MetricGroup title="处理进度">
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -90,8 +95,8 @@ export default async function DashboardPage() {
       </section>
       </MetricGroup>
 
-      <section className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
-        <p className="font-medium">推荐下一步</p>
+      <section className="rounded-xl border border-blue-200 bg-blue-50/70 p-5 text-sm leading-6 text-blue-950">
+        <p className="font-semibold">今日重点 / 推荐下一步</p>
         <p>{pendingReview > 0 ? `当前有 ${pendingReview} 部作品待审核，建议进入作品列表完成最终审核。` : "当前没有待审核作品。"} {experimentResultWorks > feedbackInsightWorks ? `另有 ${experimentResultWorks - feedbackInsightWorks} 部已导入测试结果的作品尚未生成效果洞察。` : ""}</p>
       </section>
 
@@ -102,7 +107,7 @@ export default async function DashboardPage() {
         />
         <DistributionCard
           items={strategyOrder.map((strategy) => ({
-            label: coverStrategyLabel(strategy),
+            label: dashboardCoverStrategyLabel(strategy),
             tone: distributionTone(strategy),
             value: strategyCounts[strategy] ?? 0,
           }))}
@@ -119,12 +124,12 @@ export default async function DashboardPage() {
       </section>
 
       <section className="grid gap-4 md:grid-cols-3 xl:grid-cols-6">
-        <QuickAction description="不依赖 Excel，直接录入单本作品。" href="/works/new" title="手动新增作品" />
-        <QuickAction description="上传 Excel / CSV，预览校验后写入作品库。" href="/import" title="导入作品" />
-        <QuickAction description="检索、筛选并进入单本作品运营流程。" href="/works" title="查看作品" />
-        <QuickAction description="查看批量任务进度和失败项重试。" href="/analysis" title="批量任务中心" />
-        <QuickAction description="导入多书名测试结果，生成运营复盘。" href="/experiments/import" title="导入测试结果" />
-        <QuickAction description="进入作品列表筛选作品，并导出结果或继续审核。" href="/works" title="导出 / 复盘" />
+        <ActionCard description="不依赖 Excel，直接录入单本作品。" href="/works/new" title="手动新增作品" />
+        <ActionCard description="上传 Excel / CSV，预览校验后写入作品库。" href="/import" title="导入作品" />
+        <ActionCard description="检索、筛选并进入单本作品运营流程。" href="/works" title="查看作品" />
+        <ActionCard description="查看批量任务进度和失败项重试。" href="/analysis" title="批量任务中心" />
+        <ActionCard description="导入多书名测试结果，生成运营复盘。" href="/experiments/import" title="导入测试结果" />
+        <ActionCard description="进入作品列表筛选作品，并导出结果或继续审核。" href="/works" title="导出 / 复盘" />
       </section>
     </div>
   );
@@ -136,7 +141,7 @@ function MetricGroup({ children, title }: { children: React.ReactNode; title: st
 
 function MetricCard({ label, tone = "stone", value }: { label: string; tone?: "stone" | "amber"; value: number }) {
   return (
-    <div className={`rounded-lg border p-5 ${tone === "amber" ? "border-amber-300 bg-amber-50 shadow-sm" : "border-stone-200 bg-white"}`}>
+    <div className={`rounded-xl border p-5 shadow-[0_1px_2px_rgba(15,23,42,0.03)] ${tone === "amber" ? "border-amber-300 bg-amber-50 shadow-sm" : "border-slate-200/80 bg-white"}`}>
       <div className="flex items-center justify-between gap-3">
         <p className="text-sm text-stone-500">{label}</p>
         {tone === "amber" ? <StatusBadge tone="amber">重点</StatusBadge> : null}
@@ -150,7 +155,7 @@ function DistributionCard({ items, title }: { items: Array<{ label: string; tone
   const total = items.reduce((sum, item) => sum + item.value, 0);
 
   return (
-    <div className="rounded-lg border border-stone-200 bg-white p-5">
+    <div className="rounded-xl border border-slate-200/80 bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
       <h2 className="font-semibold text-stone-950">{title}</h2>
       <div className="mt-4 space-y-3">
         {items.map((item) => (
@@ -186,16 +191,4 @@ function distributionTone(value: string): DistributionTone {
     rejected: { badge: "bg-zinc-200 text-zinc-800", bar: "bg-zinc-600" },
   };
   return tones[value] ?? { badge: "bg-stone-100 text-stone-700", bar: "bg-stone-400" };
-}
-
-function QuickAction({ description, href, title }: { description: string; href: string; title: string }) {
-  return (
-    <Link className="group rounded-lg border border-stone-200 bg-white p-5 transition hover:-translate-y-0.5 hover:border-red-300 hover:bg-red-50 hover:shadow-sm" href={href}>
-      <div className="flex items-center justify-between gap-3">
-        <h2 className="font-semibold text-stone-950">{title}</h2>
-        <span className="rounded-md bg-stone-900 px-2 py-1 text-xs font-medium text-white transition group-hover:bg-red-700">进入</span>
-      </div>
-      <p className="mt-3 text-sm leading-5 text-stone-600">{description}</p>
-    </Link>
-  );
 }

@@ -174,3 +174,12 @@ npm run db:test
 ## 阶段 20：交付验收与稳定性加固
 
 项目已进入完整交付验收。新增验收清单、验收报告模板、脱敏样例数据指南、已知问题和路线图，并补充设置页轻量健康状态、用户可读错误兜底和 Excel 长文本换行。阶段 20 不增加大型业务功能。
+
+## 阶段 21：UI 设计系统与产品体验重构
+
+阶段 21 使用 Image2 高保真 UI 概念稿驱动后台体验重构。系统新增固定侧栏、紧凑顶栏、统一卡片和状态色、中文状态映射、运营工作台、单作品运营控制台、批量任务控制台和更明确的导入工作流。设计说明见 [`docs/ui-redesign.md`](docs/ui-redesign.md)。
+
+<div align="center">
+  <img src="docs/assets/ui-mockups/phase21/dashboard/dashboard-final.png" alt="Phase 21 Dashboard UI Concept" width="100%" />
+  <p><em>阶段 21 Image2 概念稿：统一侧栏、运营工作台、推荐下一步和紧凑数据分布。</em></p>
+</div>

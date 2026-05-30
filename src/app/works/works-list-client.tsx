@@ -3,15 +3,18 @@
 import Link from "next/link";
 import { useState } from "react";
 import { BatchJobProgressModal } from "@/components/batch-job-progress-modal";
-import { StatusBadge, reviewStatusLabel, reviewStatusTone, workStatusLabel } from "@/components/status-badge";
+import { StatusBadge, coverStrategyLabel, coverStrategyTone, ratingTone, reviewStatusLabel, reviewStatusTone, workStatusLabel } from "@/components/status-badge";
 import { ExportWorksControls } from "@/app/works/export-all-button";
+import { EmptyState } from "@/components/ui";
 
 type WorkListItem = {
   author: string | null;
   category: string | null;
+  coverStrategy: string | null;
   description: string;
   externalId: string | null;
   id: string;
+  rating: string | null;
   reviewStatus: string;
   status: string;
   title: string;
@@ -103,7 +106,7 @@ export function WorksListClient({ exportFilters, works }: WorksListClientProps) 
       <BatchJobProgressModal jobId={progressJobId} onClose={() => setProgressJobId(null)} />
       <ExportWorksControls filters={exportFilters} selectedIds={selectedIds} />
 
-      <details className="rounded-lg border border-stone-200 bg-white p-4">
+      <details className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
         <summary className="cursor-pointer list-none">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
@@ -113,7 +116,7 @@ export function WorksListClient({ exportFilters, works }: WorksListClientProps) 
             </p>
           </div>
           <Link
-            className="rounded-md border border-stone-300 px-3 py-2 text-center text-sm font-medium text-stone-800 hover:border-red-300 hover:bg-red-50"
+            className="rounded-md border border-slate-200 px-3 py-2 text-center text-sm font-medium text-slate-700 hover:border-blue-200 hover:bg-blue-50"
             href="/analysis"
           >
             查看批量任务中心
@@ -194,12 +197,10 @@ export function WorksListClient({ exportFilters, works }: WorksListClientProps) 
 
       <section className="grid gap-4">
         {works.length === 0 ? (
-          <div className="rounded-lg border border-stone-200 bg-white p-5 text-sm text-stone-600">
-            暂无作品，请先导入 Excel/CSV。
-          </div>
+          <EmptyState title="暂无作品" description="导入 Excel / CSV 作品清单，或手动新增单本作品后开始运营流程。" href="/import" action="导入作品" />
         ) : null}
         {works.map((work) => (
-          <article className="rounded-lg border border-stone-200 bg-white p-4 transition hover:border-red-200" key={work.id}>
+          <article className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.02)] transition hover:border-blue-200 hover:shadow-[0_8px_24px_rgba(15,23,42,0.05)]" key={work.id}>
             <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
               <div className="flex gap-3">
                 <input
@@ -210,7 +211,7 @@ export function WorksListClient({ exportFilters, works }: WorksListClientProps) 
                   type="checkbox"
                 />
                 <div>
-                  <Link className="text-lg font-semibold text-stone-950 hover:text-red-800" href={`/works/${work.id}`}>
+                  <Link className="text-base font-semibold text-slate-950 hover:text-blue-700" href={`/works/${work.id}`}>
                     {work.title}
                   </Link>
                   <p className="mt-1 text-sm text-stone-500">
@@ -222,6 +223,8 @@ export function WorksListClient({ exportFilters, works }: WorksListClientProps) 
                 </div>
               </div>
               <div className="flex flex-wrap gap-2">
+                <StatusBadge tone={ratingTone(work.rating)}>{work.rating ? `${work.rating} 级` : "未评级"}</StatusBadge>
+                <StatusBadge tone={coverStrategyTone(work.coverStrategy)}>{coverStrategyLabel(work.coverStrategy)}</StatusBadge>
                 <StatusBadge>{workStatusLabel(work.status)}</StatusBadge>
                 <StatusBadge tone={reviewStatusTone(work.reviewStatus)}>{reviewStatusLabel(work.reviewStatus)}</StatusBadge>
               </div>

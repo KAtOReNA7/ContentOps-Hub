@@ -9,6 +9,7 @@ import { WorkRatingPanel } from "@/app/works/[id]/work-rating-panel";
 import { WorkReviewPanel } from "@/app/works/[id]/work-review-panel";
 import { WorkTitleIntroPanel } from "@/app/works/[id]/work-title-intro-panel";
 import { StatusBadge, coverStrategyLabel, renameSuggestionLabel, reviewStatusLabel } from "@/components/status-badge";
+import { PageHeader } from "@/components/ui";
 import type { CandidateWork, FinalMatch, SearchEvidence, SearchResultItem, SourceSummary } from "@/lib/adapters/search-adapter";
 import { prisma } from "@/server/db";
 import { getExperimentResultsForWork, getLatestExperimentReview } from "@/lib/experiments/experiment-service";
@@ -71,13 +72,12 @@ export default async function WorkDetailPage({ params }: WorkDetailPageProps) {
         <Link className="text-sm text-red-700 hover:text-red-900" href="/works">
           返回作品列表
         </Link>
-        <h1 className="mt-3 text-2xl font-semibold text-stone-950">{work.title}</h1>
-        <p className="mt-2 text-stone-600">作者：{work.author || "-"}</p>
+        <div className="mt-3"><PageHeader eyebrow="Single-work console" title={work.title} description={`作者：${work.author || "-"} · 作品 ID：${work.externalId || "未填写"}`} /></div>
       </div>
 
       <WorkExportButton workId={work.id} />
 
-      <section className="rounded-lg border border-stone-200 bg-white p-5">
+      <section className="rounded-xl border border-slate-200/80 bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
         <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
           <div>
             <h2 className="font-semibold text-stone-950">处理摘要</h2>
@@ -96,11 +96,11 @@ export default async function WorkDetailPage({ params }: WorkDetailPageProps) {
         </div>
       </section>
 
-      <nav className="sticky top-0 z-10 flex gap-2 overflow-x-auto rounded-lg border border-stone-200 bg-white/95 p-3 text-sm shadow-sm backdrop-blur">
+      <nav className="sticky top-16 z-10 flex gap-1 overflow-x-auto rounded-xl border border-slate-200/80 bg-white/95 p-2 text-sm shadow-sm backdrop-blur">
         {[
           ["basic-info", "基础信息"], ["identification", "作品识别"], ["rating", "价值评级"], ["title-intro", "书名简介"],
           ["cover", "封面处理"], ["experiment", "测试复盘"], ["feedback-insight", "效果回流"], ["final-review", "最终审核"],
-        ].map(([href, label]) => <a className="whitespace-nowrap rounded-md px-3 py-2 text-stone-700 hover:bg-red-50 hover:text-red-800" href={`#${href}`} key={href}>{label}</a>)}
+        ].map(([href, label]) => <a className="whitespace-nowrap rounded-md px-3 py-2 text-slate-600 hover:bg-blue-50 hover:text-blue-800" href={`#${href}`} key={href}>{label}</a>)}
       </nav>
 
       <section className="rounded-lg border border-stone-200 bg-white p-5" id="basic-info">

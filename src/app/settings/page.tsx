@@ -1,6 +1,7 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { StatusBadge } from "@/components/status-badge";
+import { PageHeader } from "@/components/ui";
 
 export default async function SettingsPage() {
   const settings = buildSettings();
@@ -9,12 +10,7 @@ export default async function SettingsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-stone-950">系统配置状态</h1>
-        <p className="mt-2 text-stone-600">
-          这里只展示运行状态，不显示 API Key、Token 或任何敏感值。OpenAI 仅在用户手动选择时调用，不默认批量执行。
-        </p>
-      </div>
+      <PageHeader eyebrow="Runtime status center" title="系统配置状态" description="这里只展示运行状态，不显示 API Key、Token 或任何敏感值。OpenAI 仅在用户手动选择时调用，不默认批量执行。" />
 
       <section>
         <h2 className="text-sm font-semibold text-stone-700">运营视图</h2>

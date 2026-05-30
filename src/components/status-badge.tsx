@@ -37,15 +37,7 @@ export function ratingTone(rating: string | null | undefined): BadgeTone {
 }
 
 export function reviewStatusLabel(value: string | null | undefined): string {
-  const labels: Record<string, string> = {
-    approved: "已采用",
-    needs_revision: "需修改",
-    on_hold: "暂缓",
-    pending_review: "待审核",
-    rejected: "已退回",
-  };
-
-  return value ? labels[value] ?? value : "未设置";
+  return displayLabel(reviewStatusLabels, value);
 }
 
 export function reviewStatusTone(value: string | null | undefined): BadgeTone {
@@ -57,13 +49,7 @@ export function reviewStatusTone(value: string | null | undefined): BadgeTone {
 }
 
 export function coverStrategyLabel(value: string | null | undefined): string {
-  const labels: Record<string, string> = {
-    keep_and_optimize_layout: "优化版式",
-    keep_and_replace_title: "换标题",
-    redraw_cover: "重绘",
-  };
-
-  return value ? labels[value] ?? value : "未评估";
+  return displayLabel(coverStrategyLabels, value, "未评估");
 }
 
 export function coverStrategyTone(value: string | null | undefined): BadgeTone {
@@ -78,7 +64,7 @@ export function workStatusLabel(value: string | null | undefined): string {
 }
 
 export function renameSuggestionLabel(value: string | null | undefined): string {
-  return ({ avoid: "不建议改名", cautious: "谨慎测试", recommended: "建议测试", strongly_recommended: "强烈建议测试" } as Record<string, string>)[value || ""] ?? value ?? "未生成";
+  return displayLabel(renameSuggestionLabels, value, "未生成");
 }
 
 export function generationStrategyLabel(value: string | null | undefined): string {
@@ -86,7 +72,7 @@ export function generationStrategyLabel(value: string | null | undefined): strin
 }
 
 export function providerLabel(value: string | null | undefined): string {
-  return ({ mock: "Mock 规则引擎", openai: "OpenAI 文本生成" } as Record<string, string>)[value || ""] ?? value ?? "未设置";
+  return displayLabel(providerLabels, value);
 }
 
 export function experimentRecommendationLabel(value: string | null | undefined): string {
@@ -94,7 +80,7 @@ export function experimentRecommendationLabel(value: string | null | undefined):
 }
 
 export function batchStatusLabel(value: string | null | undefined): string {
-  return ({ canceled: "已取消", failed: "失败", partial_success: "部分成功", pending: "待执行", running: "执行中", skipped: "已跳过", success: "成功" } as Record<string, string>)[value || ""] ?? value ?? "未设置";
+  return displayLabel(batchStatusLabels, value);
 }
 
 export function batchStatusTone(value: string | null | undefined): BadgeTone {
@@ -104,3 +90,4 @@ export function batchStatusTone(value: string | null | undefined): BadgeTone {
   if (value === "failed") return "red";
   return "stone";
 }
+import { batchStatusLabels, coverStrategyLabels, displayLabel, providerLabels, renameSuggestionLabels, reviewStatusLabels } from "@/lib/ui/display-maps";

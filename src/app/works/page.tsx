@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Prisma } from "@prisma/client";
 import { WorksListClient } from "@/app/works/works-list-client";
+import { PageHeader } from "@/components/ui";
 import { prisma } from "@/server/db";
 
 type WorksPageProps = {
@@ -51,6 +52,10 @@ export default async function WorksPage({ searchParams }: WorksPageProps) {
   } satisfies Prisma.WorkWhereInput;
   const [works, total, categories] = await Promise.all([
     prisma.work.findMany({
+      include: {
+        coverEvaluations: { orderBy: { createdAt: "desc" }, take: 1 },
+        ratings: { orderBy: { createdAt: "desc" }, take: 1 },
+      },
       orderBy: { createdAt: "desc" },
       skip: (page - 1) * pageSize,
       take: pageSize,
@@ -91,21 +96,18 @@ export default async function WorksPage({ searchParams }: WorksPageProps) {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-stone-950">作品列表</h1>
-        <p className="mt-2 text-stone-600">查看已入库作品，支持搜索、筛选、勾选导出和批量任务。</p>
-      </div>
+      <PageHeader eyebrow="Works library" title="作品列表" description="查看已入库作品，支持搜索、筛选、勾选导出和批量任务。" />
 
       <div className="flex flex-wrap gap-3">
-        <Link className="rounded-md bg-stone-900 px-4 py-2 text-sm font-medium text-white hover:bg-red-700" href="/works/new">
+        <Link className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700" href="/works/new">
           新增作品
         </Link>
-        <Link className="rounded-md border border-stone-300 px-4 py-2 text-sm font-medium text-stone-800 hover:border-red-300 hover:bg-red-50" href="/import">
+        <Link className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:border-blue-200 hover:bg-blue-50" href="/import">
           批量导入
         </Link>
       </div>
 
-      <form className="grid gap-3 rounded-lg border border-stone-200 bg-white p-4 md:grid-cols-7">
+      <form className="grid gap-3 rounded-xl border border-slate-200/80 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.03)] md:grid-cols-7">
         <input className="rounded-md border border-stone-300 px-3 py-2 text-sm" defaultValue={title} name="title" placeholder="按书名搜索" />
         <input
           className="rounded-md border border-stone-300 px-3 py-2 text-sm"
@@ -140,7 +142,7 @@ export default async function WorksPage({ searchParams }: WorksPageProps) {
             </option>
           ))}
         </select>
-        <button className="rounded-md bg-stone-900 px-4 py-2 text-sm font-medium text-white" type="submit">
+        <button className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700" type="submit">
           筛选
         </button>
       </form>
@@ -153,6 +155,8 @@ export default async function WorksPage({ searchParams }: WorksPageProps) {
           description: work.description,
           externalId: work.externalId,
           id: work.id,
+          coverStrategy: work.coverEvaluations[0]?.confirmedStrategy || work.coverEvaluations[0]?.strategy || null,
+          rating: work.ratings[0]?.rating || null,
           reviewStatus: work.reviewStatus,
           status: work.status,
           title: work.title,

@@ -1448,3 +1448,31 @@ Prisma 同步：
 - 将 `xlsx` 从 npm registry 的 `0.18.5` 切换到 SheetJS 官方 CDN 修复包 `0.20.3`，修复 Prototype Pollution 和 ReDoS 风险。
 - `npm audit --json`：通过，当前漏洞总数为 0。
 - 本次没有升级 Prisma，没有修改业务逻辑。
+
+## 阶段 21：Image2 驱动的 UI 设计系统与产品体验重构
+
+更新时间：2026-05-31
+
+- 已阅读 Apple HIG、Atlassian Design System、Material UI 和 IBM Carbon Design System 官方资料，并新增 `docs/ui-redesign-research.md`。
+- 已实际调用 Image2 生成 10 张高保真 UI 概念稿，覆盖 App Shell、Dashboard、作品导入、作品列表、单作品详情、批量任务、测试结果导入、系统设置和 2 个空状态。
+- 所有概念稿已保存到 `docs/assets/ui-mockups/phase21/`，prompt、索引和采用记录已保存到 `docs/ui-redesign/`。
+- 新增统一 App Shell：固定左侧导航、紧凑顶部栏、移动端横向导航、统一页面背景和内容宽度。
+- 新增 `src/components/ui/` 基础组件和 `src/lib/ui/` 设计 token、中文状态映射。
+- Dashboard 已升级为运营工作台，增加版本、本地优先、成本受控标签、今日重点和明确推荐下一步。
+- 作品导入和测试结果导入页已增加四阶段流程提示。
+- 作品列表已接入更紧凑卡片、蓝色交互强调和明确空状态。
+- 单作品详情页已强化顶部摘要、运营控制台定位和 sticky section nav。
+- 批量任务中心已强化双栏控制台结构，运行中蓝色、成功绿色、部分成功橙色、失败红色。
+- 设置页已定位为运行状态中心，不展示 API key 明文。
+- 本阶段没有修改 Prisma schema，没有新增依赖，没有调用 OpenAI 文本生成，没有接入新 API。
+
+### 阶段 21 检查结果
+
+- `npm exec -- prisma validate`：通过。
+- `npm exec -- prisma generate`：通过，Prisma Client v6.19.3 已生成。
+- `npm run db:test`：通过，Work count 为 20。
+- `npm run typecheck`：通过。
+- `npm run lint`：通过。
+- `npm run build`：通过。
+- 本地页面冒烟检查：`/`、`/import`、`/works`、`/analysis`、`/experiments/import`、`/settings` 和单作品详情页均返回 HTTP 200。
+- 本阶段没有运行 `db:push`，因为 Prisma schema 没有修改。

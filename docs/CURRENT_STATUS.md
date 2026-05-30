@@ -4,7 +4,7 @@
 
 ## 当前阶段
 
-阶段 20 已完成开发侧准备：项目进入完整交付验收与稳定性加固。
+阶段 21 已完成：Image2 驱动的 UI 设计系统和核心页面体验重构已落地。
 
 当前仓库：
 
@@ -44,6 +44,9 @@ https://github.com/KAtOReNA7/ContentOps-Hub.git
 - 设置页交付健康检查，覆盖数据库配置、上传目录、搜索服务和 OpenAI 文本配置
 - Excel 长文本列换行和更紧凑的交付阅读体验
 - 依赖安全修复：`npm audit` 已归零，PostCSS 和 SheetJS 均使用修复版本
+- Image2 高保真 UI 概念稿覆盖 App Shell、Dashboard、导入、列表、详情、批量任务、设置和空状态
+- 全局 App Shell、设计 token、中文状态映射和统一基础组件
+- Dashboard 运营工作台、紧凑作品列表、单作品运营控制台和运行状态中心
 
 ## 当前边界
 
@@ -56,13 +59,14 @@ https://github.com/KAtOReNA7/ContentOps-Hub.git
 
 ## 下一步建议
 
-优先按照 `docs/acceptance-checklist.md` 进行一次完整交付验收：
+优先按照 `docs/acceptance-checklist.md` 进行一次完整交付验收，并重点验证阶段 21 的运营体验：
 
 1. 导入作品并完成识别、评级、书名简介生成、封面评估和人工审核。
 2. 导入多书名测试结果，检查复盘和效果回流洞察。
 3. 导出 Excel，检查原始总表和 6 个分类工作表。
 4. 导出 ZIP，确认最终封面缺失时不会阻断整个交付包。
 5. 根据实际运营团队反馈，再决定是否接入具体真实搜索服务。
+6. 检查左侧导航、详情 sticky section nav、批量任务进度颜色和空状态引导。
 
 验收问题统一记录到 `docs/acceptance-report-template.md` 的副本中。路线规划见 `docs/roadmap.md`。
 

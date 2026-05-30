@@ -10,6 +10,7 @@ import {
   generationStrategyLabel,
   providerLabel,
 } from "@/components/status-badge";
+import { EmptyState, PageHeader } from "@/components/ui";
 
 type BatchJobItemView = {
   id: string;
@@ -163,22 +164,16 @@ export function BatchJobCenter() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-stone-950">批量任务中心</h1>
-          <p className="mt-2 max-w-3xl text-stone-600">
-            对选中作品批量执行识别、评级、书名简介生成和封面评估。V1 采用本地顺序执行，单条失败不会中断整批。
-          </p>
-        </div>
+      <PageHeader eyebrow="Batch operations" title="批量任务中心" description="对选中作品批量执行识别、评级、书名简介生成和封面评估。V1 采用本地顺序执行，单条失败不会中断整批。" actions={
         <button
-          className="rounded-md border border-stone-300 px-4 py-2 text-sm font-medium text-stone-800 hover:border-red-300 hover:bg-red-50 disabled:opacity-50"
+          className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:border-blue-200 hover:bg-blue-50 disabled:opacity-50"
           disabled={loading}
           onClick={() => void loadJobs()}
           type="button"
         >
           刷新任务
         </button>
-      </div>
+      } />
 
       <section className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
         批量真实搜索或 OpenAI 文本生成可能产生外部 API 费用，执行前必须确认成本风险。当前阶段不做批量 Image2 重绘，也不做 OpenAI 视觉评分。
@@ -193,12 +188,12 @@ export function BatchJobCenter() {
           </div>
           <div className="divide-y divide-stone-100">
             {jobs.length === 0 ? (
-              <div className="p-5 text-sm text-stone-500">暂无批量任务。请在作品列表中勾选作品后创建任务。</div>
+              <div className="p-4"><EmptyState title="暂无批量任务" description="请在作品列表中勾选作品后创建识别、评级、生成或封面评估任务。" href="/works" action="前往作品列表" /></div>
             ) : null}
             {jobs.map((job) => (
               <button
                 className={`w-full px-4 py-4 text-left transition hover:bg-stone-50 ${
-                  selectedJobId === job.id ? "bg-red-50/60" : ""
+                  selectedJobId === job.id ? "bg-blue-50/70" : ""
                 }`}
                 key={job.id}
                 onClick={() => setSelectedJobId(job.id)}
