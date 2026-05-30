@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { WorkCoverPanel } from "@/app/works/[id]/work-cover-panel";
 import { WorkExportButton } from "@/app/works/[id]/work-export-button";
 import { WorkExperimentPanel, type ExperimentReviewView, type ExperimentResultView } from "@/app/works/[id]/work-experiment-panel";
+import { WorkFeedbackInsightPanel } from "@/app/works/[id]/work-feedback-insight-panel";
 import { WorkIdentificationPanel, type WorkIdentificationView } from "@/app/works/[id]/work-identification-panel";
 import { WorkRatingPanel } from "@/app/works/[id]/work-rating-panel";
 import { WorkReviewPanel } from "@/app/works/[id]/work-review-panel";
@@ -10,6 +11,8 @@ import { WorkTitleIntroPanel } from "@/app/works/[id]/work-title-intro-panel";
 import type { CandidateWork, FinalMatch, SearchEvidence, SearchResultItem, SourceSummary } from "@/lib/adapters/search-adapter";
 import { prisma } from "@/server/db";
 import { getExperimentResultsForWork, getLatestExperimentReview } from "@/lib/experiments/experiment-service";
+import { getLatestFeedbackInsight } from "@/lib/feedback/feedback-service";
+import type { FeedbackInsightView } from "@/lib/feedback/feedback-types";
 
 type WorkDetailPageProps = {
   params: Promise<{ id: string }>;
@@ -17,7 +20,7 @@ type WorkDetailPageProps = {
 
 export default async function WorkDetailPage({ params }: WorkDetailPageProps) {
   const { id } = await params;
-  const [work, experimentResults, experimentReview] = await Promise.all([
+  const [work, experimentResults, experimentReview, feedbackInsight] = await Promise.all([
     prisma.work.findUnique({
     where: { id },
     include: {
@@ -29,6 +32,7 @@ export default async function WorkDetailPage({ params }: WorkDetailPageProps) {
     }),
     getExperimentResultsForWork(id),
     getLatestExperimentReview(id),
+    getLatestFeedbackInsight(id),
   ]);
 
   if (!work) {
@@ -127,9 +131,29 @@ export default async function WorkDetailPage({ params }: WorkDetailPageProps) {
         results={experimentResults.map(toExperimentResultView)}
         review={experimentReview ? toExperimentReviewView(experimentReview) : null}
       />
+      <WorkFeedbackInsightPanel initialInsight={feedbackInsight ? toFeedbackInsightView(feedbackInsight) : null} workId={work.id} />
       <WorkReviewPanel workId={work.id} />
     </div>
   );
+}
+
+function toFeedbackInsightView(insight: {
+  id: string; experimentReviewId: string; originalRating: string | null; originalScore: number | null;
+  originalRenameSuggestion: string | null; originalCoverStrategy: string | null; finalRecommendation: string | null;
+  actualOutcome: string; ratingAccuracy: string; titleStrategyEffect: string; coverStrategyEffect: string;
+  keyLiftMetric: string; summary: string; liftSummaryJson: string; evidenceJson: string; riskNotesJson: string;
+  strategyTagsJson: string; createdAt: Date;
+}): FeedbackInsightView {
+  return {
+    id: insight.id, experimentReviewId: insight.experimentReviewId, originalRating: insight.originalRating,
+    originalScore: insight.originalScore, originalRenameSuggestion: insight.originalRenameSuggestion,
+    originalCoverStrategy: insight.originalCoverStrategy, finalRecommendation: insight.finalRecommendation,
+    actualOutcome: insight.actualOutcome, ratingAccuracy: insight.ratingAccuracy, titleStrategyEffect: insight.titleStrategyEffect,
+    coverStrategyEffect: insight.coverStrategyEffect, keyLiftMetric: insight.keyLiftMetric, summary: insight.summary,
+    liftSummary: safeJsonParse(insight.liftSummaryJson, {}), evidence: safeJsonParse(insight.evidenceJson, []),
+    riskNotes: safeJsonParse(insight.riskNotesJson, []), strategyTags: safeJsonParse(insight.strategyTagsJson, []),
+    createdAt: insight.createdAt.toISOString(),
+  };
 }
 
 function toExperimentResultView(result: {

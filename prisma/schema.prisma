@@ -43,6 +43,7 @@ model Work {
   batchJobItems     BatchJobItem[]
   experimentResults WorkExperimentResult[]
   experimentReviews WorkExperimentReview[]
+  feedbackInsights WorkFeedbackInsight[]
 }
 
 model AnalysisResult {
@@ -310,11 +311,43 @@ model WorkExperimentReview {
   work          Work                  @relation(fields: [workId], references: [id], onDelete: Cascade)
   controlResult WorkExperimentResult  @relation("ControlExperimentResult", fields: [controlResultId], references: [id], onDelete: Cascade)
   winnerResult  WorkExperimentResult? @relation("WinnerExperimentResult", fields: [winnerResultId], references: [id], onDelete: SetNull)
+  feedbackInsights WorkFeedbackInsight[]
 
   @@index([workId])
   @@index([experimentName])
   @@index([recommendation])
   @@index([confidenceLevel])
+}
+
+model WorkFeedbackInsight {
+  id                       String   @id @default(cuid())
+  workId                   String
+  experimentReviewId       String
+  originalRating           String?
+  originalScore            Float?
+  originalRenameSuggestion String?
+  originalCoverStrategy    String?
+  finalRecommendation      String?
+  actualOutcome            String
+  ratingAccuracy           String
+  titleStrategyEffect      String
+  coverStrategyEffect      String
+  keyLiftMetric            String
+  summary                  String
+  liftSummaryJson          String
+  evidenceJson             String
+  riskNotesJson            String
+  strategyTagsJson         String
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+
+  work             Work                 @relation(fields: [workId], references: [id], onDelete: Cascade)
+  experimentReview WorkExperimentReview @relation(fields: [experimentReviewId], references: [id], onDelete: Cascade)
+
+  @@index([workId])
+  @@index([experimentReviewId])
+  @@index([actualOutcome])
+  @@index([ratingAccuracy])
 }
 
 enum WorkStatus {

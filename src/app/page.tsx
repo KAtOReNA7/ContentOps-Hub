@@ -20,6 +20,9 @@ export default async function DashboardPage() {
     continueExperimentReviews,
     rollbackExperimentReviews,
     insufficientExperimentReviews,
+    feedbackInsightWorks,
+    accurateFeedbackInsights,
+    inconclusiveFeedbackInsights,
     ratingGroups,
     strategyGroups,
     reviewGroups,
@@ -36,6 +39,9 @@ export default async function DashboardPage() {
     prisma.workExperimentReview.count({ where: { recommendation: "continue_test" } }),
     prisma.workExperimentReview.count({ where: { recommendation: "rollback" } }),
     prisma.workExperimentReview.count({ where: { recommendation: "need_more_data" } }),
+    prisma.work.count({ where: { feedbackInsights: { some: {} } } }),
+    prisma.workFeedbackInsight.count({ where: { ratingAccuracy: "accurate" } }),
+    prisma.workFeedbackInsight.count({ where: { actualOutcome: "inconclusive" } }),
     prisma.workRating.groupBy({ by: ["rating"], _count: { rating: true } }),
     prisma.workCoverEvaluation.groupBy({ by: ["strategy"], _count: { strategy: true } }),
     prisma.work.groupBy({ by: ["reviewStatus"], _count: { reviewStatus: true } }),
@@ -67,6 +73,9 @@ export default async function DashboardPage() {
         <MetricCard label="建议继续测试数量" value={continueExperimentReviews} />
         <MetricCard label="建议回退数量" value={rollbackExperimentReviews} />
         <MetricCard label="数据不足数量" value={insufficientExperimentReviews} />
+        <MetricCard label="已生成效果洞察作品数" value={feedbackInsightWorks} />
+        <MetricCard label="评级基本准确洞察数" value={accurateFeedbackInsights} />
+        <MetricCard label="效果洞察数据不足数" value={inconclusiveFeedbackInsights} />
       </section>
 
       <section className="grid gap-4 lg:grid-cols-3">

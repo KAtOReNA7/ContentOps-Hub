@@ -27,6 +27,7 @@ export const workExportInclude = {
     take: 1,
   },
   experimentResults: { orderBy: { importedAt: "desc" }, take: 10 },
+  feedbackInsights: { orderBy: { createdAt: "desc" }, take: 1 },
   identifications: { orderBy: { updatedAt: "desc" }, take: 1 },
   ratings: { orderBy: { createdAt: "desc" }, take: 1 },
   titleIntroGenerations: { orderBy: { createdAt: "desc" }, take: 1 },
@@ -133,6 +134,9 @@ export function toExportRow(work: WorkForExport): ExportWorkRow {
   const controlExperiment = experimentReview?.controlResult ?? null;
   const winnerExperiment = experimentReview?.winnerResult ?? null;
   const experimentRisks = safeJsonParse<string[]>(experimentReview?.riskNotesJson, []);
+  const feedbackInsight = work.feedbackInsights[0] ?? null;
+  const feedbackTags = safeJsonParse<string[]>(feedbackInsight?.strategyTagsJson, []);
+  const feedbackRisks = safeJsonParse<string[]>(feedbackInsight?.riskNotesJson, []);
   const finalMatch = safeJsonParse<FinalMatch | null>(identification?.finalMatchJson, null);
   const identificationRisks = safeJsonParse<string[]>(identification?.risksJson, []);
   const ratingReasons = safeJsonParse<string[]>(rating?.reasonsJson, []);
@@ -150,7 +154,7 @@ export function toExportRow(work: WorkForExport): ExportWorkRow {
   const finalIntro = text(work.finalIntro) || text(introVariant?.intro) || work.description;
   const finalCoverUrl = text(work.finalCoverUrl);
 
-  return withExperimentExportFields({
+  return withFeedbackExportFields(withExperimentExportFields({
     "作品 ID": text(work.externalId),
     "原书名 title": work.title,
     "作者 author": text(work.author),
@@ -222,7 +226,39 @@ export function toExportRow(work: WorkForExport): ExportWorkRow {
     "Image2重绘1:1地址": latestRedrawSquare?.status === "success" ? `/api/cover-renders/${latestRedrawSquare.id}/file` : "",
     "Image2重绘3:4地址": latestRedrawPortrait?.status === "success" ? `/api/cover-renders/${latestRedrawPortrait.id}/file` : "",
     "导出时间 exportedAt": exportedAt,
-  }, { controlExperiment, experimentReview, experimentRisks, winnerExperiment, work });
+  }, { controlExperiment, experimentReview, experimentRisks, winnerExperiment, work }), { feedbackInsight, feedbackRisks, feedbackTags });
+}
+
+function withFeedbackExportFields(row: ExportWorkRow, context: {
+  feedbackInsight: {
+    actualOutcome: string; ratingAccuracy: string; titleStrategyEffect: string; coverStrategyEffect: string;
+    keyLiftMetric: string; strategyTagsJson: string; summary: string; riskNotesJson: string;
+  } | null;
+  feedbackRisks: string[];
+  feedbackTags: string[];
+}): ExportWorkRow {
+  const insight = context.feedbackInsight;
+  return {
+    ...row,
+    "实际结果判断": insight ? feedbackLabel(insight.actualOutcome) : "未生成效果洞察",
+    "评级准确性": insight ? feedbackLabel(insight.ratingAccuracy) : "",
+    "书名策略效果": insight ? feedbackLabel(insight.titleStrategyEffect) : "",
+    "封面策略效果": insight ? feedbackLabel(insight.coverStrategyEffect) : "",
+    "关键提升指标": insight ? feedbackLabel(insight.keyLiftMetric) : "",
+    "策略标签": joinList(context.feedbackTags),
+    "效果洞察摘要": text(insight?.summary),
+    "效果洞察风险提示": joinList(context.feedbackRisks),
+  };
+}
+
+function feedbackLabel(value: string) {
+  const labels: Record<string, string> = {
+    positive: "正向", neutral: "中性", negative: "负向", inconclusive: "数据不足",
+    overestimated: "评分偏高", underestimated: "评分偏低", accurate: "基本准确", unknown: "暂无法判断",
+    effective: "有效", ineffective: "无效", mixed: "效果混合",
+    ctr: "点击率", conversion: "转化率", finish_rate: "完播率", revenue: "收入", none: "暂无",
+  };
+  return labels[value] ?? value;
 }
 
 function safeJsonParse<T>(value: string | null | undefined, fallback: T): T {
