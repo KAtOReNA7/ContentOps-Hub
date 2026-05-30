@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useState } from "react";
 import { BatchJobProgressModal } from "@/components/batch-job-progress-modal";
 import { StatusBadge, coverStrategyLabel, coverStrategyTone, ratingTone, reviewStatusLabel, reviewStatusTone, workStatusLabel } from "@/components/status-badge";
@@ -10,6 +11,7 @@ import { EmptyState } from "@/components/ui";
 type WorkListItem = {
   author: string | null;
   category: string | null;
+  coverAssetId: string | null;
   coverStrategy: string | null;
   description: string;
   externalId: string | null;
@@ -106,7 +108,7 @@ export function WorksListClient({ exportFilters, works }: WorksListClientProps) 
       <BatchJobProgressModal jobId={progressJobId} onClose={() => setProgressJobId(null)} />
       <ExportWorksControls filters={exportFilters} selectedIds={selectedIds} />
 
-      <details className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
+      <details className={`rounded-xl border bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.03)] ${selectedIds.length ? "border-blue-200 ring-1 ring-blue-100" : "border-slate-200/80"}`}>
         <summary className="cursor-pointer list-none">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
@@ -169,7 +171,7 @@ export function WorksListClient({ exportFilters, works }: WorksListClientProps) 
         <div className="mt-4 flex flex-wrap gap-2">
           {(["identify", "rating", "title_intro", "cover_evaluation"] as const).map((step) => (
             <button
-              className="rounded-md bg-stone-900 px-3 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-45"
+              className="rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-45"
               disabled={selectedIds.length === 0 || batchLoading !== null}
               key={step}
               onClick={() => void createBatchJob(step)}
@@ -197,12 +199,12 @@ export function WorksListClient({ exportFilters, works }: WorksListClientProps) 
 
       <section className="grid gap-4">
         {works.length === 0 ? (
-          <EmptyState title="暂无作品" description="导入 Excel / CSV 作品清单，或手动新增单本作品后开始运营流程。" href="/import" action="导入作品" />
+          <EmptyState title="暂无作品" description="导入 Excel / CSV 作品清单，或手动新增单本作品后开始运营流程。" href="/import" action="导入作品" secondaryHref="/works/new" secondaryAction="手动新增作品" />
         ) : null}
         {works.map((work) => (
           <article className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.02)] transition hover:border-blue-200 hover:shadow-[0_8px_24px_rgba(15,23,42,0.05)]" key={work.id}>
             <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-              <div className="flex gap-3">
+              <div className="flex min-w-0 gap-3">
                 <input
                   aria-label={`选择 ${work.title}`}
                   checked={selectedIds.includes(work.id)}
@@ -210,23 +212,25 @@ export function WorksListClient({ exportFilters, works }: WorksListClientProps) 
                   onChange={(event) => toggleWork(work.id, event.target.checked)}
                   type="checkbox"
                 />
-                <div>
+                {work.coverAssetId ? <Image alt={`${work.title} 封面`} className="h-20 w-14 shrink-0 rounded-md border border-slate-200 bg-slate-100 object-cover" height={80} src={`/api/cover-assets/${work.coverAssetId}/file`} unoptimized width={56} /> : <div className="flex h-20 w-14 shrink-0 items-center justify-center rounded-md border border-dashed border-slate-300 bg-slate-50 text-[10px] text-slate-400">暂无封面</div>}
+                <div className="min-w-0">
                   <Link className="text-base font-semibold text-slate-950 hover:text-blue-700" href={`/works/${work.id}`}>
                     {work.title}
                   </Link>
                   <p className="mt-1 text-sm text-stone-500">
                     作者：{work.author || "-"} | 品类：{work.category || "-"} | 作品ID：{work.externalId || "-"}
                   </p>
-                  <p className="mt-2 max-w-3xl line-clamp-1 text-sm text-stone-600" title={work.description}>
+                  <p className="mt-2 max-w-3xl line-clamp-2 text-sm leading-5 text-stone-600" title={work.description}>
                     {work.description}
                   </p>
                 </div>
               </div>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex shrink-0 flex-wrap gap-2 md:max-w-[360px] md:justify-end">
                 <StatusBadge tone={ratingTone(work.rating)}>{work.rating ? `${work.rating} 级` : "未评级"}</StatusBadge>
                 <StatusBadge tone={coverStrategyTone(work.coverStrategy)}>{coverStrategyLabel(work.coverStrategy)}</StatusBadge>
                 <StatusBadge>{workStatusLabel(work.status)}</StatusBadge>
                 <StatusBadge tone={reviewStatusTone(work.reviewStatus)}>{reviewStatusLabel(work.reviewStatus)}</StatusBadge>
+                <Link className="inline-flex items-center rounded-md border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100" href={`/works/${work.id}`}>查看详情</Link>
               </div>
             </div>
           </article>
@@ -249,7 +253,7 @@ function batchStepLabel(step: "identify" | "rating" | "title_intro" | "cover_eva
 
 function ProviderOption({ checked, description, name, onChange, title }: { checked: boolean; description: string; name: string; onChange: () => void; title: string }) {
   return (
-    <label className="flex cursor-pointer gap-2 rounded-md border border-stone-200 bg-white p-3 text-sm text-stone-700 hover:border-red-200">
+    <label className="flex cursor-pointer gap-2 rounded-md border border-stone-200 bg-white p-3 text-sm text-stone-700 hover:border-blue-300 hover:bg-blue-50/40">
       <input checked={checked} className="mt-1" name={name} onChange={onChange} type="radio" />
       <span>
         <span className="block font-medium text-stone-950">{title}</span>

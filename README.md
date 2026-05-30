@@ -36,6 +36,8 @@
 
 ## Interface Preview
 
+> Preview images are design references generated for the UI redesign direction. They are not production screenshots.
+
 <div align="center">
   <img src="docs/assets/readme/readme-dashboard.png" alt="ContentOps Hub Dashboard" width="100%" />
   <p><em>运营看板：从导入、识别、评级、审核到复盘与效果洞察的整体进度视图。</em></p>

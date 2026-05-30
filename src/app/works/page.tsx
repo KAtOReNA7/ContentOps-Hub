@@ -53,6 +53,7 @@ export default async function WorksPage({ searchParams }: WorksPageProps) {
   const [works, total, categories] = await Promise.all([
     prisma.work.findMany({
       include: {
+        coverAssets: { orderBy: { createdAt: "desc" }, take: 1 },
         coverEvaluations: { orderBy: { createdAt: "desc" }, take: 1 },
         ratings: { orderBy: { createdAt: "desc" }, take: 1 },
       },
@@ -152,6 +153,7 @@ export default async function WorksPage({ searchParams }: WorksPageProps) {
         works={works.map((work) => ({
           author: work.author,
           category: work.category,
+          coverAssetId: work.coverAssets[0]?.id || null,
           description: work.description,
           externalId: work.externalId,
           id: work.id,

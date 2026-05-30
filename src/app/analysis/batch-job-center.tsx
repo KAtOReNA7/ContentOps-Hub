@@ -182,7 +182,7 @@ export function BatchJobCenter() {
       {error ? <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">{error}</div> : null}
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.45fr)]">
-        <section className="overflow-hidden rounded-lg border border-stone-200 bg-white">
+        <section className="overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
           <div className="border-b border-stone-100 px-4 py-3">
             <h2 className="font-semibold text-stone-950">任务列表</h2>
           </div>
@@ -227,7 +227,7 @@ export function BatchJobCenter() {
           </div>
         </section>
 
-        <section className="rounded-lg border border-stone-200 bg-white">
+        <section className="rounded-xl border border-slate-200/80 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
           <div className="border-b border-stone-100 px-4 py-3">
             <h2 className="font-semibold text-stone-950">任务详情</h2>
           </div>
@@ -310,7 +310,7 @@ export function BatchJobCenter() {
 
 function SummaryCard({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div className="rounded-lg border border-stone-200 bg-stone-50 p-3">
+    <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
       <div className="text-xs text-stone-500">{label}</div>
       <div className="mt-1 text-xl font-semibold text-stone-950">{value}</div>
     </div>

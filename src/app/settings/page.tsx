@@ -12,6 +12,11 @@ export default async function SettingsPage() {
     <div className="space-y-6">
       <PageHeader eyebrow="Runtime status center" title="系统配置状态" description="这里只展示运行状态，不显示 API Key、Token 或任何敏感值。OpenAI 仅在用户手动选择时调用，不默认批量执行。" />
 
+      <section className="rounded-xl border border-blue-200 bg-blue-50/70 p-4 text-sm leading-6 text-blue-950">
+        <p className="font-semibold">安全与成本策略</p>
+        <p className="mt-1">不展示 API Key 明文，不提交 `.env`，不默认批量调用外部 API。真实搜索、OpenAI 文本和图片能力均由运营人员主动选择后触发。</p>
+      </section>
+
       <section>
         <h2 className="text-sm font-semibold text-stone-700">运营视图</h2>
         <div className="mt-3 grid gap-4 md:grid-cols-2">

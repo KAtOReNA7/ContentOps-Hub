@@ -1476,3 +1476,30 @@ Prisma 同步：
 - `npm run build`：通过。
 - 本地页面冒烟检查：`/`、`/import`、`/works`、`/analysis`、`/experiments/import`、`/settings` 和单作品详情页均返回 HTTP 200。
 - 本阶段没有运行 `db:push`，因为 Prisma schema 没有修改。
+
+## 阶段 21.1：Image2 概念图对齐与 UI/UX 精修
+
+更新时间：2026-05-31
+
+- 新增 `docs/ui-redesign/phase21-gap-analysis.md`，逐页记录 Dashboard、作品列表、单作品详情、批量任务、作品导入、测试结果导入和设置页的参考图差距。
+- AppShell 已增强品牌标识、蓝色当前导航、搜索占位、系统运行状态与成本受控提示。
+- 共享 `SectionCard` 已支持标题、说明、状态和操作区；新增共享状态色映射 `src/lib/ui/status-maps.ts`。
+- Dashboard 已增加 Hero 双栏、流程概览、动态推荐下一步、紧凑 KPI、统一 MetricBar 和图标化快捷入口。
+- 作品列表已增加最新封面缩略图、双入口空状态、右侧状态聚合和明确详情按钮。
+- 单作品详情摘要已增加封面预览、状态矩阵与推荐下一步；长简介和备注默认摘要展示。
+- 作品导入和测试结果导入已增加拖拽式上传视觉区和更明确的模板下载按钮。
+- 批量任务中心已统一双栏卡片层级；设置页已增加安全与成本策略说明。
+- README 已明确 Interface Preview 图片为 UI redesign direction 的设计参考，不伪装为真实截图。
+- 本阶段没有新增业务功能，没有修改 Prisma schema，没有接入新 API，没有调用 OpenAI 或 Image2 业务生成能力。
+
+### 阶段 21.1 检查结果
+
+- `npm install`：通过，依赖已是最新状态，0 vulnerabilities。
+- `npm exec -- prisma validate`：通过。
+- `npm exec -- prisma generate`：通过，Prisma Client v6.19.3 已生成。
+- `npm run db:test`：通过，Work count 为 20。
+- `npm run typecheck`：通过。
+- `npm run lint`：通过，无 warning。
+- `npm run build`：通过。
+- 本地 HTTP 冒烟检查：`/`、`/import`、`/works`、`/analysis`、`/experiments/import`、`/settings` 和单作品详情页均返回 HTTP 200。
+- 本阶段没有运行 `db:push`，因为 Prisma schema 没有修改。

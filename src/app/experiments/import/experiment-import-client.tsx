@@ -129,19 +129,21 @@ export function ExperimentImportClient() {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-lg border border-stone-200 bg-white p-6">
+      <section className="rounded-xl border border-slate-200/80 bg-white p-6 shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-          <label className="block flex-1">
-            <span className="text-sm font-medium text-stone-950">上传测试结果 .xlsx / .csv</span>
+          <label className="block flex-1 cursor-pointer rounded-xl border border-dashed border-blue-300 bg-blue-50/40 px-5 py-8 text-center transition hover:border-blue-500 hover:bg-blue-50">
+            <span className="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-blue-100 text-xl text-blue-700">⇧</span>
+            <span className="mt-3 block text-sm font-medium text-stone-950">上传测试结果 .xlsx / .csv</span>
+            <span className="mt-1 block text-xs text-stone-500">拖拽文件或点击选择，用于导入对照组和实验组数据</span>
             <input
               accept=".xlsx,.csv"
-              className="mt-3 block w-full rounded-md border border-stone-300 bg-white px-3 py-2 text-sm"
+              className="mx-auto mt-4 block max-w-sm rounded-md border border-stone-300 bg-white px-3 py-2 text-sm"
               onChange={handleFileChange}
               type="file"
             />
           </label>
           <a
-            className="inline-flex w-fit rounded-md border border-stone-300 bg-stone-50 px-4 py-2 text-sm font-medium text-stone-800 hover:bg-stone-100"
+            className="inline-flex w-fit rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
             href="/api/experiments/template"
           >
             下载多书名测试结果模板

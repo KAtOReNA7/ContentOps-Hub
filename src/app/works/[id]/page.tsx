@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { notFound } from "next/navigation";
 import { WorkCoverPanel } from "@/app/works/[id]/work-cover-panel";
 import { WorkExportButton } from "@/app/works/[id]/work-export-button";
@@ -8,8 +9,9 @@ import { WorkIdentificationPanel, type WorkIdentificationView } from "@/app/work
 import { WorkRatingPanel } from "@/app/works/[id]/work-rating-panel";
 import { WorkReviewPanel } from "@/app/works/[id]/work-review-panel";
 import { WorkTitleIntroPanel } from "@/app/works/[id]/work-title-intro-panel";
+import { ExpandableText } from "@/components/expandable-text";
 import { StatusBadge, coverStrategyLabel, renameSuggestionLabel, reviewStatusLabel } from "@/components/status-badge";
-import { PageHeader } from "@/components/ui";
+import { PageHeader, SectionCard } from "@/components/ui";
 import type { CandidateWork, FinalMatch, SearchEvidence, SearchResultItem, SourceSummary } from "@/lib/adapters/search-adapter";
 import { prisma } from "@/server/db";
 import { getExperimentResultsForWork, getLatestExperimentReview } from "@/lib/experiments/experiment-service";
@@ -32,6 +34,7 @@ export default async function WorkDetailPage({ params }: WorkDetailPageProps) {
       },
       ratings: { orderBy: { createdAt: "desc" }, take: 1 },
       coverEvaluations: { orderBy: { createdAt: "desc" }, take: 1 },
+      coverAssets: { orderBy: { createdAt: "desc" }, take: 1 },
       titleIntroGenerations: { orderBy: { createdAt: "desc" }, take: 1 },
     },
     }),
@@ -46,6 +49,7 @@ export default async function WorkDetailPage({ params }: WorkDetailPageProps) {
   const identification = work.identifications[0];
   const rating = work.ratings[0] ?? null;
   const coverEvaluation = work.coverEvaluations[0] ?? null;
+  const coverAsset = work.coverAssets[0] ?? null;
   const initialIdentification: WorkIdentificationView | null = identification
     ? {
         identificationId: identification.id,
@@ -72,20 +76,15 @@ export default async function WorkDetailPage({ params }: WorkDetailPageProps) {
         <Link className="text-sm text-red-700 hover:text-red-900" href="/works">
           返回作品列表
         </Link>
-        <div className="mt-3"><PageHeader eyebrow="Single-work console" title={work.title} description={`作者：${work.author || "-"} · 作品 ID：${work.externalId || "未填写"}`} /></div>
+        <div className="mt-3"><PageHeader actions={<WorkExportButton workId={work.id} />} eyebrow="Single-work console" title={work.title} description={`作者：${work.author || "-"} · 品类：${work.category || "-"} · 作品 ID：${work.externalId || "未填写"}`} /></div>
       </div>
 
-      <WorkExportButton workId={work.id} />
-
-      <section className="rounded-xl border border-slate-200/80 bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
-        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+      <SectionCard description="先确认作品当前状态和推荐动作，再通过下方导航进入对应运营步骤。" status={<StatusBadge tone={work.reviewStatus === "approved" ? "green" : "amber"}>{nextStepLabel({ coverEvaluation: Boolean(coverEvaluation), experimentReview: Boolean(experimentReview), feedbackInsight: Boolean(feedbackInsight), identification: Boolean(identification), rating: Boolean(rating), reviewStatus: work.reviewStatus })}</StatusBadge>} title="作品运营摘要">
+        <div className="grid gap-4 lg:grid-cols-[160px_minmax(0,1fr)]">
           <div>
-            <h2 className="font-semibold text-stone-950">处理摘要</h2>
-            <p className="mt-1 text-sm text-stone-600">快速确认当前进度，并按下方导航进入目标模块。</p>
+            {coverAsset ? <Image alt={`${work.title} 封面`} className="aspect-[3/4] w-full rounded-lg border border-slate-200 bg-slate-100 object-cover" height={216} src={`/api/cover-assets/${coverAsset.id}/file`} unoptimized width={160} /> : <div className="flex aspect-[3/4] items-center justify-center rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 text-center text-xs text-slate-500">暂无封面<br />可在封面处理中上传</div>}
           </div>
-          <StatusBadge tone={work.reviewStatus === "approved" ? "green" : "amber"}>{nextStepLabel({ coverEvaluation: Boolean(coverEvaluation), experimentReview: Boolean(experimentReview), feedbackInsight: Boolean(feedbackInsight), identification: Boolean(identification), rating: Boolean(rating), reviewStatus: work.reviewStatus })}</StatusBadge>
-        </div>
-        <div className="mt-4 grid gap-3 md:grid-cols-4">
+          <div className="grid content-start gap-3 md:grid-cols-4">
           <SummaryItem label="识别状态" value={identification ? identification.confirmed ? "身份已确认" : "已识别，待确认" : "未识别"} />
           <SummaryItem label="评级" value={rating ? `${rating.rating} 级 / ${rating.score} 分` : "未评级"} />
           <SummaryItem label="多书名建议" value={renameSuggestionLabel(rating?.renameSuggestion)} />
@@ -93,8 +92,10 @@ export default async function WorkDetailPage({ params }: WorkDetailPageProps) {
           <SummaryItem label="测试复盘" value={experimentReview ? "已生成复盘" : "未生成复盘"} />
           <SummaryItem label="效果洞察" value={feedbackInsight ? "已生成洞察" : "未生成洞察"} />
           <SummaryItem label="最终审核" value={reviewStatusLabel(work.reviewStatus)} />
+          <div className="rounded-md border border-blue-100 bg-blue-50 p-3 md:col-span-4"><p className="text-xs font-medium text-blue-700">推荐下一步</p><p className="mt-1 text-sm font-semibold text-blue-950">{nextStepLabel({ coverEvaluation: Boolean(coverEvaluation), experimentReview: Boolean(experimentReview), feedbackInsight: Boolean(feedbackInsight), identification: Boolean(identification), rating: Boolean(rating), reviewStatus: work.reviewStatus })}</p></div>
+          </div>
         </div>
-      </section>
+      </SectionCard>
 
       <nav className="sticky top-16 z-10 flex gap-1 overflow-x-auto rounded-xl border border-slate-200/80 bg-white/95 p-2 text-sm shadow-sm backdrop-blur">
         {[
@@ -105,7 +106,7 @@ export default async function WorkDetailPage({ params }: WorkDetailPageProps) {
 
       <section className="rounded-lg border border-stone-200 bg-white p-5" id="basic-info">
         <h2 className="font-semibold text-stone-950">作品简介</h2>
-        <p className="mt-3 text-stone-600">{work.description}</p>
+        <div className="mt-3"><ExpandableText>{work.description}</ExpandableText></div>
       </section>
 
       <section className="grid gap-4 md:grid-cols-3">
@@ -144,7 +145,7 @@ export default async function WorkDetailPage({ params }: WorkDetailPageProps) {
 
       <section className="rounded-lg border border-stone-200 bg-white p-5">
         <h2 className="font-semibold text-stone-950">备注</h2>
-        <p className="mt-3 text-stone-600">{work.notes || "-"}</p>
+        <div className="mt-3"><ExpandableText>{work.notes || "-"}</ExpandableText></div>
       </section>
 
       <div id="identification"><WorkIdentificationPanel workId={work.id} initialIdentification={initialIdentification} /></div>

@@ -1,38 +1,15 @@
+import Link from "next/link";
 import { StatusBadge, reviewStatusLabel } from "@/components/status-badge";
-import { ActionCard, EmptyState, PageHeader, SectionCard } from "@/components/ui";
+import { ActionCard, EmptyState, MetricBar, PageHeader, SectionCard, StatCard } from "@/components/ui";
+import { uiTokens } from "@/lib/ui/design-tokens";
 import { prisma } from "@/server/db";
 
 const ratingOrder = ["S", "A", "B", "C", "D"];
 const strategyOrder = ["keep_and_replace_title", "keep_and_optimize_layout", "redraw_cover"];
 const reviewOrder = ["pending_review", "approved", "needs_revision", "on_hold", "rejected"];
 
-function dashboardCoverStrategyLabel(strategy: string) {
-  if (strategy === "keep_and_replace_title") return "换标题";
-  if (strategy === "keep_and_optimize_layout") return "优化版式";
-  return "重绘";
-}
-
 export default async function DashboardPage() {
-  const [
-    totalWorks,
-    identifiedWorks,
-    ratedWorks,
-    generatedWorks,
-    reviewedWorks,
-    pendingReview,
-    experimentResultWorks,
-    experimentReviewWorks,
-    adoptExperimentReviews,
-    continueExperimentReviews,
-    rollbackExperimentReviews,
-    insufficientExperimentReviews,
-    feedbackInsightWorks,
-    accurateFeedbackInsights,
-    inconclusiveFeedbackInsights,
-    ratingGroups,
-    strategyGroups,
-    reviewGroups,
-  ] = await Promise.all([
+  const [totalWorks, identifiedWorks, ratedWorks, generatedWorks, reviewedWorks, pendingReview, experimentResultWorks, experimentReviewWorks, adoptExperimentReviews, continueExperimentReviews, rollbackExperimentReviews, insufficientExperimentReviews, feedbackInsightWorks, accurateFeedbackInsights, inconclusiveFeedbackInsights, ratingGroups, strategyGroups, reviewGroups] = await Promise.all([
     prisma.work.count(),
     prisma.work.count({ where: { identifications: { some: {} } } }),
     prisma.work.count({ where: { ratings: { some: {} } } }),
@@ -55,140 +32,105 @@ export default async function DashboardPage() {
   const ratingCounts = Object.fromEntries(ratingGroups.map((item) => [item.rating, item._count.rating]));
   const strategyCounts = Object.fromEntries(strategyGroups.map((item) => [item.strategy, item._count.strategy]));
   const reviewCounts = Object.fromEntries(reviewGroups.map((item) => [item.reviewStatus, item._count.reviewStatus]));
+  const nextAction = dashboardNextAction({ feedbackInsightWorks, experimentResultWorks, experimentReviewWorks, pendingReview, totalWorks });
 
   return (
     <div className="space-y-6">
-      <SectionCard className="overflow-hidden bg-[linear-gradient(135deg,#ffffff_0%,#f8fbff_100%)]">
-        <div className="mb-4 flex flex-wrap gap-2"><StatusBadge tone="blue">v0.21 运营工作台</StatusBadge><StatusBadge tone="green">本地优先</StatusBadge><StatusBadge>成本受控</StatusBadge></div>
-        <PageHeader eyebrow="ContentOps Hub" title="内容运营综合管理平台" description="番茄畅听多书名运营辅助工具。当前已覆盖导入、识别、评级、书名简介生成、封面处理、人工审核、批量任务、测试结果回流和 Excel 导出闭环。" />
+      <SectionCard className="overflow-hidden bg-[linear-gradient(135deg,#ffffff_0%,#f4f8ff_100%)]">
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-center">
+          <div>
+            <div className="mb-3 flex flex-wrap gap-2"><StatusBadge tone="blue">v0.21 运营工作台</StatusBadge><StatusBadge tone="green">本地优先</StatusBadge><StatusBadge>成本受控</StatusBadge></div>
+            <PageHeader eyebrow="ContentOps Hub" title="内容运营综合管理平台" description="从导入、识别、评级、审核到复盘与效果洞察的全流程管理。聚合运营决策所需信息，把下一步动作放在最容易触达的位置。" />
+            <div className="mt-5 flex flex-wrap gap-2"><Link className={uiTokens.primaryButton} href={nextAction.href}>{nextAction.action}</Link><Link className={uiTokens.secondaryButton} href="/import">导入作品</Link></div>
+          </div>
+          <div className="rounded-xl border border-blue-100 bg-white/80 p-4 shadow-sm">
+            <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">Workflow overview</p>
+            <div className="mt-4 space-y-3">{[["导入", totalWorks], ["识别", identifiedWorks], ["评级", ratedWorks], ["审核", reviewedWorks]].map(([label, value], index) => <div className="flex items-center gap-3" key={String(label)}><span className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-50 text-xs font-semibold text-blue-700">{index + 1}</span><span className="flex-1 text-sm text-slate-600">{label}</span><strong className="tabular-nums text-slate-950">{value}</strong></div>)}</div>
+          </div>
+        </div>
       </SectionCard>
 
-      {totalWorks === 0 ? <EmptyState title="暂无作品" description="先导入作品清单或手动新增作品，再开始识别、评级和多书名运营流程。" href="/import" action="导入作品" /> : null}
+      {totalWorks === 0 ? <EmptyState title="暂无作品" description="先导入作品清单或手动新增作品，再开始识别、评级和多书名运营流程。" href="/import" action="导入作品" secondaryHref="/works/new" secondaryAction="手动新增作品" /> : null}
 
-      <MetricGroup title="处理进度">
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        <MetricCard label="已导入作品数" value={totalWorks} />
-        <MetricCard label="已识别作品数" value={identifiedWorks} />
-        <MetricCard label="已评级作品数" value={ratedWorks} />
-        <MetricCard label="已生成书名简介数" value={generatedWorks} />
-        <MetricCard label="已审核作品数" value={reviewedWorks} />
-        <MetricCard label="待审核作品数" value={pendingReview} tone="amber" />
+      <section className="grid gap-4 xl:grid-cols-[340px_minmax(0,1fr)]">
+        <SectionCard className="border-blue-200 bg-blue-50/50" title="今日重点 / 推荐下一步" status={<StatusBadge tone={nextAction.tone}>{nextAction.badge}</StatusBadge>}>
+          <p className="text-sm leading-6 text-slate-700">{nextAction.description}</p>
+          <Link className="mt-4 inline-flex text-sm font-semibold text-blue-700 hover:text-blue-900" href={nextAction.href}>{nextAction.action} →</Link>
+        </SectionCard>
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+          <StatCard label="已导入作品" value={totalWorks} />
+          <StatCard label="已识别" value={identifiedWorks} />
+          <StatCard label="已评级" value={ratedWorks} />
+          <StatCard label="已生成建议" value={generatedWorks} />
+          <StatCard label="已审核" value={reviewedWorks} />
+          <StatCard highlight label="待审核" value={pendingReview} hint="优先处理" />
+        </div>
       </section>
-      </MetricGroup>
 
       <MetricGroup title="测试复盘">
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        <MetricCard label="已导入测试结果作品数" value={experimentResultWorks} />
-        <MetricCard label="已产生复盘结论作品数" value={experimentReviewWorks} />
-        <MetricCard label="建议采用数量" value={adoptExperimentReviews} />
-        <MetricCard label="建议继续测试数量" value={continueExperimentReviews} />
-        <MetricCard label="建议回退数量" value={rollbackExperimentReviews} />
-        <MetricCard label="数据不足数量" value={insufficientExperimentReviews} />
-      </section>
+        <StatCard label="已导入测试结果" value={experimentResultWorks} />
+        <StatCard label="已生成复盘结论" value={experimentReviewWorks} />
+        <StatCard label="建议采用" value={adoptExperimentReviews} />
+        <StatCard label="建议继续测试" value={continueExperimentReviews} />
+        <StatCard label="建议回退" value={rollbackExperimentReviews} />
+        <StatCard label="数据不足" value={insufficientExperimentReviews} />
       </MetricGroup>
 
       <MetricGroup title="效果洞察">
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        <MetricCard label="已生成效果洞察作品数" value={feedbackInsightWorks} />
-        <MetricCard label="评级基本准确洞察数" value={accurateFeedbackInsights} />
-        <MetricCard label="效果洞察数据不足数" value={inconclusiveFeedbackInsights} />
-      </section>
+        <StatCard label="已生成效果洞察" value={feedbackInsightWorks} />
+        <StatCard label="评级基本准确" value={accurateFeedbackInsights} />
+        <StatCard label="洞察数据不足" value={inconclusiveFeedbackInsights} />
       </MetricGroup>
 
-      <section className="rounded-xl border border-blue-200 bg-blue-50/70 p-5 text-sm leading-6 text-blue-950">
-        <p className="font-semibold">今日重点 / 推荐下一步</p>
-        <p>{pendingReview > 0 ? `当前有 ${pendingReview} 部作品待审核，建议进入作品列表完成最终审核。` : "当前没有待审核作品。"} {experimentResultWorks > feedbackInsightWorks ? `另有 ${experimentResultWorks - feedbackInsightWorks} 部已导入测试结果的作品尚未生成效果洞察。` : ""}</p>
-      </section>
-
       <section className="grid gap-4 lg:grid-cols-3">
-        <DistributionCard
-          items={ratingOrder.map((rating) => ({ label: `${rating}级`, tone: distributionTone(rating), value: ratingCounts[rating] ?? 0 }))}
-          title="评级分布"
-        />
-        <DistributionCard
-          items={strategyOrder.map((strategy) => ({
-            label: dashboardCoverStrategyLabel(strategy),
-            tone: distributionTone(strategy),
-            value: strategyCounts[strategy] ?? 0,
-          }))}
-          title="封面策略分布"
-        />
-        <DistributionCard
-          items={reviewOrder.map((status) => ({
-            label: reviewStatusLabel(status),
-            tone: distributionTone(status),
-            value: reviewCounts[status] ?? 0,
-          }))}
-          title="审核状态分布"
-        />
+        <DistributionCard items={ratingOrder.map((rating) => ({ label: `${rating}级`, tone: metricTone(rating), value: ratingCounts[rating] ?? 0 }))} title="评级分布" />
+        <DistributionCard items={strategyOrder.map((strategy) => ({ label: dashboardCoverStrategyLabel(strategy), tone: metricTone(strategy), value: strategyCounts[strategy] ?? 0 }))} title="封面策略分布" />
+        <DistributionCard items={reviewOrder.map((status) => ({ label: reviewStatusLabel(status), tone: metricTone(status), value: reviewCounts[status] ?? 0 }))} title="审核状态分布" />
       </section>
 
-      <section className="grid gap-4 md:grid-cols-3 xl:grid-cols-6">
-        <ActionCard description="不依赖 Excel，直接录入单本作品。" href="/works/new" title="手动新增作品" />
-        <ActionCard description="上传 Excel / CSV，预览校验后写入作品库。" href="/import" title="导入作品" />
-        <ActionCard description="检索、筛选并进入单本作品运营流程。" href="/works" title="查看作品" />
-        <ActionCard description="查看批量任务进度和失败项重试。" href="/analysis" title="批量任务中心" />
-        <ActionCard description="导入多书名测试结果，生成运营复盘。" href="/experiments/import" title="导入测试结果" />
-        <ActionCard description="进入作品列表筛选作品，并导出结果或继续审核。" href="/works" title="导出 / 复盘" />
+      <section>
+        <h2 className="mb-3 text-sm font-semibold text-slate-700">快捷入口</h2>
+        <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
+          <ActionCard description="不依赖 Excel，直接录入单本作品。" href="/works/new" icon="+" title="手动新增作品" />
+          <ActionCard description="上传 Excel / CSV，校验后写入作品库。" href="/import" icon="⇩" title="导入作品" />
+          <ActionCard description="检索、筛选并进入单本运营流程。" href="/works" icon="▤" title="查看作品" />
+          <ActionCard description="查看批量任务进度和失败项重试。" href="/analysis" icon="◫" title="批量任务中心" />
+          <ActionCard description="导入测试结果并生成运营复盘。" href="/experiments/import" icon="⌁" title="导入测试结果" />
+          <ActionCard description="按筛选结果导出或继续审核。" href="/works" icon="↗" title="导出 / 复盘" />
+        </div>
       </section>
     </div>
   );
 }
 
 function MetricGroup({ children, title }: { children: React.ReactNode; title: string }) {
-  return <section className="space-y-3"><h2 className="text-sm font-semibold text-stone-700">{title}</h2>{children}</section>;
+  return <section><h2 className="mb-3 text-sm font-semibold text-slate-700">{title}</h2><div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">{children}</div></section>;
 }
 
-function MetricCard({ label, tone = "stone", value }: { label: string; tone?: "stone" | "amber"; value: number }) {
-  return (
-    <div className={`rounded-xl border p-5 shadow-[0_1px_2px_rgba(15,23,42,0.03)] ${tone === "amber" ? "border-amber-300 bg-amber-50 shadow-sm" : "border-slate-200/80 bg-white"}`}>
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-sm text-stone-500">{label}</p>
-        {tone === "amber" ? <StatusBadge tone="amber">重点</StatusBadge> : null}
-      </div>
-      <p className="mt-3 text-4xl font-semibold tracking-normal text-stone-950">{value}</p>
-    </div>
-  );
-}
-
-function DistributionCard({ items, title }: { items: Array<{ label: string; tone: DistributionTone; value: number }>; title: string }) {
+function DistributionCard({ items, title }: { items: Array<{ label: string; tone: Parameters<typeof MetricBar>[0]["tone"]; value: number }>; title: string }) {
   const total = items.reduce((sum, item) => sum + item.value, 0);
-
-  return (
-    <div className="rounded-xl border border-slate-200/80 bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
-      <h2 className="font-semibold text-stone-950">{title}</h2>
-      <div className="mt-4 space-y-3">
-        {items.map((item) => (
-          <div className="grid grid-cols-[88px_minmax(80px,1fr)_36px] items-center gap-3 text-sm" key={item.label}>
-            <span className={`inline-flex h-7 items-center rounded-md px-2.5 text-xs font-medium ${item.tone.badge}`}>{item.label}</span>
-            <div className="h-2.5 overflow-hidden rounded-full bg-stone-100">
-              <div className={`h-full rounded-full ${item.tone.bar}`} style={{ width: total > 0 ? `${Math.round((item.value / total) * 100)}%` : "0%" }} />
-            </div>
-            <span className="text-right font-semibold tabular-nums text-stone-950">{item.value}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
+  return <SectionCard title={title}>{<div className="space-y-3">{items.map((item) => <MetricBar key={item.label} label={item.label} tone={item.tone} total={total} value={item.value} />)}</div>}</SectionCard>;
 }
 
-type DistributionTone = { badge: string; bar: string };
+function dashboardCoverStrategyLabel(strategy: string) {
+  if (strategy === "keep_and_replace_title") return "换标题";
+  if (strategy === "keep_and_optimize_layout") return "优化版式";
+  return "重绘";
+}
 
-function distributionTone(value: string): DistributionTone {
-  const tones: Record<string, DistributionTone> = {
-    A: { badge: "bg-blue-100 text-blue-800", bar: "bg-blue-500" },
-    B: { badge: "bg-emerald-100 text-emerald-800", bar: "bg-emerald-500" },
-    C: { badge: "bg-orange-100 text-orange-800", bar: "bg-orange-500" },
-    D: { badge: "bg-red-100 text-red-800", bar: "bg-red-500" },
-    S: { badge: "bg-purple-100 text-purple-800", bar: "bg-purple-500" },
-    approved: { badge: "bg-green-100 text-green-800", bar: "bg-green-500" },
-    keep_and_optimize_layout: { badge: "bg-cyan-100 text-cyan-800", bar: "bg-cyan-500" },
-    keep_and_replace_title: { badge: "bg-blue-100 text-blue-800", bar: "bg-blue-500" },
-    needs_revision: { badge: "bg-red-100 text-red-800", bar: "bg-red-500" },
-    on_hold: { badge: "bg-stone-100 text-stone-700", bar: "bg-stone-400" },
-    pending_review: { badge: "bg-orange-100 text-orange-800", bar: "bg-orange-500" },
-    redraw_cover: { badge: "bg-red-100 text-red-800", bar: "bg-red-500" },
-    rejected: { badge: "bg-zinc-200 text-zinc-800", bar: "bg-zinc-600" },
-  };
-  return tones[value] ?? { badge: "bg-stone-100 text-stone-700", bar: "bg-stone-400" };
+function metricTone(value: string): Parameters<typeof MetricBar>[0]["tone"] {
+  if (["S"].includes(value)) return "purple";
+  if (["A", "approved", "keep_and_replace_title"].includes(value)) return "green";
+  if (["B", "keep_and_optimize_layout"].includes(value)) return "blue";
+  if (["C", "pending_review", "on_hold"].includes(value)) return "amber";
+  if (["D", "needs_revision", "rejected", "redraw_cover"].includes(value)) return "red";
+  return "slate";
+}
+
+function dashboardNextAction(status: { feedbackInsightWorks: number; experimentResultWorks: number; experimentReviewWorks: number; pendingReview: number; totalWorks: number }) {
+  if (status.totalWorks === 0) return { action: "导入作品", badge: "开始使用", description: "当前还没有作品。先导入作品清单或手动录入单本作品，再进入后续运营流程。", href: "/import", tone: "blue" as const };
+  if (status.pendingReview > 0) return { action: "查看待审核作品", badge: `${status.pendingReview} 部待审核`, description: `当前有 ${status.pendingReview} 部作品等待人工审核。优先确认最终书名、简介和封面，完成交付闭环。`, href: "/works?reviewStatus=pending_review", tone: "amber" as const };
+  if (status.experimentResultWorks > status.experimentReviewWorks) return { action: "进入测试复盘", badge: "需要复盘", description: "存在已导入测试结果但尚未生成复盘的作品。建议进入作品详情完成复盘。", href: "/works", tone: "blue" as const };
+  if (status.experimentReviewWorks > status.feedbackInsightWorks) return { action: "生成效果洞察", badge: "需要洞察", description: "存在已生成复盘但尚未沉淀效果洞察的作品。建议进入作品详情完成评分校准。", href: "/works", tone: "blue" as const };
+  return { action: "查看作品列表", badge: "流程正常", description: "当前没有高优先级阻塞项。可以继续查看作品、导入测试结果或导出交付材料。", href: "/works", tone: "green" as const };
 }
