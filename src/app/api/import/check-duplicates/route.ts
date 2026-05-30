@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/server/db";
-import { titleAuthorKey, type RawImportRow } from "@/lib/import/validation";
+import {
+  normalizeImportRow,
+  titleAuthorKey,
+  type RawImportRow,
+} from "@/lib/import/validation";
 
 export const runtime = "nodejs";
 
@@ -12,8 +16,9 @@ export async function POST(request: Request) {
   try {
     const body = (await request.json()) as CheckDuplicatesRequest;
     const rows = Array.isArray(body.rows) ? body.rows : [];
-    const externalIds = rows
-      .map((row) => String(row["作品ID"] ?? "").trim())
+    const normalizedRows = rows.map(normalizeImportRow);
+    const externalIds = normalizedRows
+      .map((row) => row.externalId)
       .filter(Boolean);
 
     const existingByExternalId = externalIds.length
@@ -38,7 +43,9 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       success: true,
-      externalIds: existingByExternalId.map((work) => work.externalId).filter(Boolean),
+      externalIds: existingByExternalId
+        .map((work) => work.externalId)
+        .filter(Boolean),
       titleAuthorKeys: existingWorks
         .filter((work) => work.author)
         .map((work) => titleAuthorKey(work.title, work.author ?? "")),
@@ -47,7 +54,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         success: false,
-        message: "重复作品检查失败",
+        message: "重复作品检查失败。",
         errors: [error instanceof Error ? error.message : "未知错误"],
       },
       { status: 500 },
