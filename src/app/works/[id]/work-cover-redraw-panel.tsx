@@ -258,7 +258,7 @@ export function WorkCoverRedrawPanel({ evaluation, workId }: WorkCoverRedrawPane
               />
             ) : (
               <div className="flex aspect-square items-center justify-center rounded-md border border-red-100 bg-red-50 p-4 text-center text-sm text-red-700">
-                生成失败：{render.errorMessage || "未知错误"}
+                生成失败：{render.errorMessage || "未返回具体错误，请检查图片生成配置或稍后重试。"}
               </div>
             )}
             <div className="mt-3 flex items-center justify-between gap-3 text-sm">

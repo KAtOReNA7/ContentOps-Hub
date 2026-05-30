@@ -1,8 +1,11 @@
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import { StatusBadge } from "@/components/status-badge";
 
 export default async function SettingsPage() {
   const settings = buildSettings();
   const operationalSettings = buildOperationalSettings();
+  const healthSettings = buildHealthSettings();
 
   return (
     <div className="space-y-6">
@@ -17,6 +20,14 @@ export default async function SettingsPage() {
         <h2 className="text-sm font-semibold text-stone-700">运营视图</h2>
         <div className="mt-3 grid gap-4 md:grid-cols-2">
           {operationalSettings.map((setting) => <SettingCard key={setting.key} setting={setting} />)}
+        </div>
+      </section>
+
+      <section>
+        <h2 className="text-sm font-semibold text-stone-700">交付健康检查</h2>
+        <p className="mt-2 text-sm text-stone-600">这里只做轻量配置检查。数据库真实连接请以 `npm run db:test` 为准。</p>
+        <div className="mt-3 grid gap-4 md:grid-cols-2">
+          {healthSettings.map((setting) => <SettingCard key={setting.key} setting={setting} />)}
         </div>
       </section>
 
@@ -192,6 +203,44 @@ function buildOperationalSettings() {
     { key: "op-openai-image", label: "OpenAI 图片生成", value: process.env.OPENAI_IMAGE_MODEL ? "已配置" : "未配置", tone: process.env.OPENAI_IMAGE_MODEL ? "green" : "amber", description: "仅单本作品确认成本后手动调用。" },
     { key: "op-batch-image", label: "批量图片生成", value: "默认关闭", tone: "stone", description: "避免图片生成 API 成本失控。" },
     { key: "op-cost", label: "成本策略", value: "手动触发", tone: "green", description: "真实搜索、OpenAI 文本和图片均不默认批量执行。" },
+  ] as const;
+}
+
+function buildHealthSettings() {
+  const searchProvider = process.env.SEARCH_PROVIDER?.trim() || "mock";
+  const searchBaseUrl = process.env.SEARCH_BASE_URL?.trim();
+  const openaiBaseUrl = process.env.OPENAI_BASE_URL?.trim();
+  const uploadsExists = existsSync(join(process.cwd(), "uploads"));
+
+  return [
+    {
+      key: "health-database",
+      label: "数据库配置",
+      value: process.env.DATABASE_URL ? "已配置" : "未配置",
+      tone: process.env.DATABASE_URL ? "green" : "amber",
+      description: "只检查 DATABASE_URL 是否存在，不连接数据库。",
+    },
+    {
+      key: "health-uploads",
+      label: "上传目录",
+      value: uploadsExists ? "已存在" : "首次上传时创建",
+      tone: uploadsExists ? "green" : "stone",
+      description: "上传目录不会提交到 Git；目录缺失不会影响首次启动。",
+    },
+    {
+      key: "health-search",
+      label: "搜索服务",
+      value: searchProvider === "mock" ? "Mock 可用" : searchBaseUrl ? "真实搜索已配置" : "缺少 Base URL",
+      tone: searchProvider === "mock" || searchBaseUrl ? "green" : "amber",
+      description: searchBaseUrl ? `服务 host：${safeHostLabel(searchBaseUrl)}` : "默认可使用 Mock；真实搜索需要配置 Base URL。",
+    },
+    {
+      key: "health-openai",
+      label: "OpenAI 文本生成",
+      value: process.env.OPENAI_API_KEY && process.env.OPENAI_TEXT_MODEL ? "可手动调用" : "未完整配置",
+      tone: process.env.OPENAI_API_KEY && process.env.OPENAI_TEXT_MODEL ? "green" : "amber",
+      description: openaiBaseUrl ? `服务 host：${baseUrlHostLabel(openaiBaseUrl)}` : "未配置自定义 Base URL，将由 SDK 使用默认地址。",
+    },
   ] as const;
 }
 

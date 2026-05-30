@@ -18,15 +18,15 @@ https://github.com/KAtOReNA7/ContentOps-Hub.git
 main
 ```
 
-阶段 19.1 功能基线提交：
+阶段 19.2 本地功能基线提交：
 
 ```text
-2d5175e feat: improve project delivery experience
+8c6787a feat: improve batch progress and search provider flow
 ```
 
 ## 当前进度
 
-当前已完成到阶段 19.1。
+当前已完成到阶段 20 开发侧准备，进入完整交付验收。
 
 ### 已完成
 
@@ -48,6 +48,8 @@ main
 - 阶段 18.1：测试结果模板、填写规则和校验增强
 - 阶段 19：效果回流洞察和评分校准
 - 阶段 19.1：首页、详情页、列表页、批量任务、设置页和多 Sheet Excel 导出体验清理
+- 阶段 19.2：批量任务轮询进度弹窗、真实搜索 provider 入口和限流退避配置
+- 阶段 20：验收清单、验收报告模板、脱敏样例、已知问题、路线图和低风险体验加固
 
 ## 核心工作流
 
@@ -146,7 +148,7 @@ npm run build
 
 先执行一次完整交付验收，再根据运营反馈决定下一阶段：
 
-1. 使用真实作品完成导入到人工审核闭环。
+1. 按照 `docs/acceptance-checklist.md` 使用脱敏样例完成导入到人工审核闭环。
 2. 使用测试结果模板导入一组对照数据，检查复盘和效果洞察。
 3. 检查 Excel 原始总表和 6 个分类工作表。
 4. 检查 ZIP 缺少最终封面时是否仍能正常交付。
@@ -165,3 +167,6 @@ npm run build
 9. `docs/batch-jobs.md`
 10. `docs/export-excel.md`
 11. `docs/feedback-insights.md`
+12. `docs/acceptance-checklist.md`
+13. `docs/known-issues.md`
+14. `docs/roadmap.md`

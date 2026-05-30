@@ -27,7 +27,7 @@
     "sharp": "^0.34.5",
     "socks-proxy-agent": "^10.0.0",
     "undici": "^8.3.0",
-    "xlsx": "^0.18.5",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
     "zod": "latest"
   },
   "devDependencies": {
@@ -40,5 +40,8 @@
     "prisma": "^6.19.3",
     "tailwindcss": "latest",
     "typescript": "latest"
+  },
+  "overrides": {
+    "postcss": "^8.5.10"
   }
 }

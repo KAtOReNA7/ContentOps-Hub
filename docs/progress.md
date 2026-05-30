@@ -1415,3 +1415,36 @@ Prisma 同步：
 - 新增 SEARCH_EXPANDED_QUERY_LIMIT、SEARCH_QUERY_DELAY_MS、SEARCH_429_RETRY_COUNT、SEARCH_429_RETRY_DELAY_MS 配置。
 - 百度千帆 HTTP 429 默认退避重试 1 次；仍失败时明确提示限流或额度不足，并保留 Mock fallback。
 - 本补丁没有调用真实搜索 API，没有修改 Prisma schema，没有新增依赖。
+## 阶段 20：完整交付验收与稳定性加固
+
+更新时间：2026-05-30
+
+- 新增 `docs/acceptance-checklist.md`：完整业务链路验收清单。
+- 新增 `docs/acceptance-report-template.md`：验收问题和发布结论模板。
+- 新增 `docs/sample-data-guide.md`：脱敏样例数据准备说明。
+- 新增 `docs/known-issues.md`：当前边界、风险和后续建议。
+- 新增 `docs/roadmap.md`：v0.20 之后的稳定性与运营效率路线。
+- 设置页新增轻量交付健康检查，只显示配置状态，不展示密钥、代理地址详情或敏感路径。
+- 重绘失败和识别候选来源增加中文兜底提示，不再直接展示模糊的 `未知错误` 或 `unknown`。
+- Excel 导出长文本列增加换行和行高设置，提升运营交付阅读体验。
+- ZIP 导出已复核：缺少最终封面不会阻断整个交付包，本地文件读取限制在 `uploads/` 下。
+- 本阶段没有修改 Prisma schema。
+- 本阶段没有接入新的搜索 provider，没有调用 OpenAI，没有新增大型业务功能。
+
+### 阶段 20 检查结果
+
+- `npm exec -- prisma validate`：通过。
+- `npm exec -- prisma generate`：通过，Prisma Client v6.19.3 已生成。
+- `npm run db:test`：通过，SQLite 真实查询成功。
+- `npm run typecheck`：通过。
+- `npm run lint`：通过。
+- `npm run build`：通过。
+- 本地冒烟检查：`/settings` 返回 200 并显示交付健康检查；`/api/export/works` 返回 Excel；`/api/export/works/zip` 返回 ZIP。
+- `npm install` 报告 3 个依赖审计问题（2 moderate、1 high），已记录到 `docs/known-issues.md`，阶段 20 不做依赖大升级。
+
+### 阶段 20 依赖安全修复
+
+- 使用 `overrides` 将 PostCSS 解析到 `8.5.15`，修复 Next.js 依赖链中的中危 XSS 风险。
+- 将 `xlsx` 从 npm registry 的 `0.18.5` 切换到 SheetJS 官方 CDN 修复包 `0.20.3`，修复 Prototype Pollution 和 ReDoS 风险。
+- `npm audit --json`：通过，当前漏洞总数为 0。
+- 本次没有升级 Prisma，没有修改业务逻辑。

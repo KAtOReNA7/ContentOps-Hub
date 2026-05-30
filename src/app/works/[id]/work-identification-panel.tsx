@@ -322,7 +322,7 @@ export function WorkIdentificationPanel({
                     <div className="mt-3 grid gap-2 border-t border-stone-100 pt-3 text-sm text-stone-600 md:grid-cols-2">
                       <p>完整标题：{candidate.title}</p>
                       <p>作者：{candidate.author}</p>
-                      <p>sourceCategory：{candidate.sourceCategory ?? candidate.sourceType ?? "unknown"}</p>
+                      <p>sourceCategory：{candidate.sourceCategory ?? candidate.sourceType ?? "未识别来源"}</p>
                       <p>canonicalSourceName：{candidate.canonicalSourceName ?? candidate.sourceName ?? candidate.platform}</p>
                       <p>rawRank：{candidate.rawRank ?? "-"}</p>
                       <p>relevanceScore：{candidate.relevanceScore ?? "-"}</p>

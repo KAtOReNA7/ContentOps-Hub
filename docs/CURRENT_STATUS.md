@@ -4,7 +4,7 @@
 
 ## 当前阶段
 
-阶段 19.2 已完成：批量任务进度体验和真实搜索入口已补齐。
+阶段 20 已完成开发侧准备：项目进入完整交付验收与稳定性加固。
 
 当前仓库：
 
@@ -12,10 +12,10 @@
 https://github.com/KAtOReNA7/ContentOps-Hub.git
 ```
 
-阶段 19.1 功能基线提交：
+阶段 19.2 本地功能基线提交：
 
 ```text
-2d5175e feat: improve project delivery experience
+8c6787a feat: improve batch progress and search provider flow
 ```
 
 ## 已完成能力
@@ -40,6 +40,10 @@ https://github.com/KAtOReNA7/ContentOps-Hub.git
 - 批量任务创建后弹出轮询式进度窗口，展示总数、完成数、成功、失败和跳过数量
 - 单本和批量识别均支持显式选择 Mock 或 configured search
 - 批量任务分别保存识别搜索 provider 和书名简介生成 provider，避免混淆
+- 阶段 20 验收资料：验收清单、报告模板、脱敏样例、已知问题和路线图
+- 设置页交付健康检查，覆盖数据库配置、上传目录、搜索服务和 OpenAI 文本配置
+- Excel 长文本列换行和更紧凑的交付阅读体验
+- 依赖安全修复：`npm audit` 已归零，PostCSS 和 SheetJS 均使用修复版本
 
 ## 当前边界
 
@@ -52,13 +56,15 @@ https://github.com/KAtOReNA7/ContentOps-Hub.git
 
 ## 下一步建议
 
-优先进行一次完整交付验收：
+优先按照 `docs/acceptance-checklist.md` 进行一次完整交付验收：
 
 1. 导入作品并完成识别、评级、书名简介生成、封面评估和人工审核。
 2. 导入多书名测试结果，检查复盘和效果回流洞察。
 3. 导出 Excel，检查原始总表和 6 个分类工作表。
 4. 导出 ZIP，确认最终封面缺失时不会阻断整个交付包。
 5. 根据实际运营团队反馈，再决定是否接入具体真实搜索服务。
+
+验收问题统一记录到 `docs/acceptance-report-template.md` 的副本中。路线规划见 `docs/roadmap.md`。
 
 ## 禁止事项
 

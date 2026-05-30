@@ -142,23 +142,49 @@ export function buildWorksExportWorkbook(rows: ExportWorkRow[]): Buffer {
 
 function appendSheet(workbook: XLSX.WorkBook, sheetName: string, rows: ExportWorkRow[]) {
   const worksheet = XLSX.utils.json_to_sheet(rows);
+  const headers = Object.keys(rows[0] ?? {});
 
-  worksheet["!cols"] = Object.keys(rows[0] ?? {}).map((header) => ({
+  worksheet["!cols"] = headers.map((header) => ({
     wch: getColumnWidth(header),
   }));
+  worksheet["!rows"] = rows.map(() => ({ hpt: 32 }));
+  applyReadableCellFormatting(worksheet, headers, rows.length);
 
   XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
 }
 
-function getColumnWidth(header: string) {
-  if (
+function applyReadableCellFormatting(worksheet: XLSX.WorkSheet, headers: string[], rowCount: number) {
+  for (let columnIndex = 0; columnIndex < headers.length; columnIndex += 1) {
+    if (!isLongTextColumn(headers[columnIndex])) continue;
+
+    for (let rowIndex = 1; rowIndex <= rowCount; rowIndex += 1) {
+      const cell = worksheet[XLSX.utils.encode_cell({ c: columnIndex, r: rowIndex })];
+      if (!cell) continue;
+      cell.s = {
+        ...(cell.s ?? {}),
+        alignment: {
+          ...cell.s?.alignment,
+          vertical: "top",
+          wrapText: true,
+        },
+      };
+    }
+  }
+}
+
+function isLongTextColumn(header: string) {
+  return (
     header.includes("简介") ||
     header.includes("理由") ||
     header.includes("风险") ||
     header.includes("证据") ||
     header.includes("摘要") ||
     header.includes("Prompt")
-  ) {
+  );
+}
+
+function getColumnWidth(header: string) {
+  if (isLongTextColumn(header)) {
     return 42;
   }
 
