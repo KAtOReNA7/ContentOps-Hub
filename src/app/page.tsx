@@ -60,6 +60,7 @@ export default async function DashboardPage() {
         </p>
       </section>
 
+      <MetricGroup title="处理进度">
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         <MetricCard label="已导入作品数" value={totalWorks} />
         <MetricCard label="已识别作品数" value={identifiedWorks} />
@@ -67,15 +68,31 @@ export default async function DashboardPage() {
         <MetricCard label="已生成书名简介数" value={generatedWorks} />
         <MetricCard label="已审核作品数" value={reviewedWorks} />
         <MetricCard label="待审核作品数" value={pendingReview} tone="amber" />
+      </section>
+      </MetricGroup>
+
+      <MetricGroup title="测试复盘">
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         <MetricCard label="已导入测试结果作品数" value={experimentResultWorks} />
         <MetricCard label="已产生复盘结论作品数" value={experimentReviewWorks} />
         <MetricCard label="建议采用数量" value={adoptExperimentReviews} />
         <MetricCard label="建议继续测试数量" value={continueExperimentReviews} />
         <MetricCard label="建议回退数量" value={rollbackExperimentReviews} />
         <MetricCard label="数据不足数量" value={insufficientExperimentReviews} />
+      </section>
+      </MetricGroup>
+
+      <MetricGroup title="效果洞察">
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         <MetricCard label="已生成效果洞察作品数" value={feedbackInsightWorks} />
         <MetricCard label="评级基本准确洞察数" value={accurateFeedbackInsights} />
         <MetricCard label="效果洞察数据不足数" value={inconclusiveFeedbackInsights} />
+      </section>
+      </MetricGroup>
+
+      <section className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
+        <p className="font-medium">推荐下一步</p>
+        <p>{pendingReview > 0 ? `当前有 ${pendingReview} 部作品待审核，建议进入作品列表完成最终审核。` : "当前没有待审核作品。"} {experimentResultWorks > feedbackInsightWorks ? `另有 ${experimentResultWorks - feedbackInsightWorks} 部已导入测试结果的作品尚未生成效果洞察。` : ""}</p>
       </section>
 
       <section className="grid gap-4 lg:grid-cols-3">
@@ -101,15 +118,20 @@ export default async function DashboardPage() {
         />
       </section>
 
-      <section className="grid gap-4 md:grid-cols-5">
+      <section className="grid gap-4 md:grid-cols-3 xl:grid-cols-6">
         <QuickAction description="不依赖 Excel，直接录入单本作品。" href="/works/new" title="手动新增作品" />
         <QuickAction description="上传 Excel / CSV，预览校验后写入作品库。" href="/import" title="导入作品" />
-        <QuickAction description="导入多书名测试结果，生成运营复盘。" href="/experiments/import" title="导入测试结果" />
         <QuickAction description="检索、筛选并进入单本作品运营流程。" href="/works" title="查看作品" />
         <QuickAction description="查看批量任务进度和失败项重试。" href="/analysis" title="批量任务中心" />
+        <QuickAction description="导入多书名测试结果，生成运营复盘。" href="/experiments/import" title="导入测试结果" />
+        <QuickAction description="进入作品列表筛选作品，并导出结果或继续审核。" href="/works" title="导出 / 复盘" />
       </section>
     </div>
   );
+}
+
+function MetricGroup({ children, title }: { children: React.ReactNode; title: string }) {
+  return <section className="space-y-3"><h2 className="text-sm font-semibold text-stone-700">{title}</h2>{children}</section>;
 }
 
 function MetricCard({ label, tone = "stone", value }: { label: string; tone?: "stone" | "amber"; value: number }) {

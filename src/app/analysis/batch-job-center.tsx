@@ -2,7 +2,14 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { StatusBadge } from "@/components/status-badge";
+import {
+  StatusBadge,
+  batchStatusLabel,
+  batchStatusTone,
+  coverStrategyLabel,
+  generationStrategyLabel,
+  providerLabel,
+} from "@/components/status-badge";
 
 type BatchJobItemView = {
   id: string;
@@ -201,7 +208,7 @@ export function BatchJobCenter() {
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="font-medium text-stone-950">{stepLabel(job.type)}</span>
-                      <StatusBadge tone={statusTone(job.status)}>{statusLabel(job.status)}</StatusBadge>
+                      <StatusBadge tone={batchStatusTone(job.status)}>{batchStatusLabel(job.status)}</StatusBadge>
                     </div>
                     <p className="mt-1 text-xs text-stone-500">{formatDate(job.createdAt)}</p>
                   </div>
@@ -211,7 +218,7 @@ export function BatchJobCenter() {
                 </div>
                 <div className="mt-3 h-2 rounded-full bg-stone-100">
                   <div
-                    className="h-2 rounded-full bg-red-500"
+                    className={`h-2 rounded-full ${progressBarClass(job.status)}`}
                     style={{
                       width: `${job.totalCount ? ((job.successCount + job.failedCount + job.skippedCount) / job.totalCount) * 100 : 0}%`,
                     }}
@@ -264,13 +271,16 @@ export function BatchJobCenter() {
                         </td>
                         <td className="px-3 py-3 text-stone-700">{stepLabel(item.step)}</td>
                         <td className="px-3 py-3">
-                          <StatusBadge tone={statusTone(item.status)}>{statusLabel(item.status)}</StatusBadge>
+                          <StatusBadge tone={batchStatusTone(item.status)}>{batchStatusLabel(item.status)}</StatusBadge>
                         </td>
                         <td className="max-w-md px-3 py-3 text-stone-600">
                           {item.status === "failed" ? (
                             <span className="text-red-700">{formatItemError(item.errorMessage, item.errorCode)}</span>
                           ) : (
-                            formatSummary(item.resultSummaryJson)
+                            <details>
+                              <summary className="cursor-pointer text-stone-700">查看关键结果摘要</summary>
+                              <p className="mt-2 leading-6">{formatSummary(item.resultSummaryJson)}</p>
+                            </details>
                           )}
                         </td>
                         <td className="px-3 py-3">
@@ -332,27 +342,12 @@ function stepLabel(value: string) {
   return labels[value] || value;
 }
 
-function statusLabel(value: string) {
-  const labels: Record<string, string> = {
-    canceled: "已取消",
-    failed: "失败",
-    partial_success: "部分成功",
-    pending: "待执行",
-    running: "执行中",
-    skipped: "已跳过",
-    success: "成功",
-  };
-
-  return labels[value] || value;
-}
-
-function statusTone(value: string): "stone" | "green" | "amber" | "orange" | "red" | "blue" | "purple" {
-  if (value === "success") return "green";
-  if (value === "failed") return "red";
-  if (value === "partial_success") return "orange";
-  if (value === "running") return "blue";
-  if (value === "pending") return "amber";
-  return "stone";
+function progressBarClass(value: string) {
+  if (value === "success") return "bg-green-500";
+  if (value === "running") return "bg-blue-500";
+  if (value === "partial_success") return "bg-orange-500";
+  if (value === "failed") return "bg-red-500";
+  return "bg-stone-400";
 }
 
 function formatSummary(value: string | null) {
@@ -362,11 +357,21 @@ function formatSummary(value: string | null) {
     const parsed = JSON.parse(value) as Record<string, unknown>;
     return Object.entries(parsed)
       .slice(0, 5)
-      .map(([key, item]) => `${summaryKeyLabel(key)}：${String(item ?? "-")}`)
+      .map(([key, item]) => `${summaryKeyLabel(key)}：${summaryValueLabel(key, item)}`)
       .join("；");
   } catch {
     return "结果摘要解析失败。";
   }
+}
+
+function summaryValueLabel(key: string, value: unknown) {
+  if (key === "provider") return providerLabel(String(value ?? ""));
+  if (key === "strategy") {
+    const strategy = String(value ?? "");
+    const coverLabel = coverStrategyLabel(strategy);
+    return coverLabel === strategy ? generationStrategyLabel(strategy) : coverLabel;
+  }
+  return String(value ?? "-");
 }
 
 function summaryKeyLabel(key: string) {

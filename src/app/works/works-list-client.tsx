@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { StatusBadge, reviewStatusLabel, reviewStatusTone } from "@/components/status-badge";
+import { StatusBadge, reviewStatusLabel, reviewStatusTone, workStatusLabel } from "@/components/status-badge";
 import { ExportWorksControls } from "@/app/works/export-all-button";
 
 type WorkListItem = {
@@ -97,12 +97,13 @@ export function WorksListClient({ exportFilters, works }: WorksListClientProps) 
     <div className="space-y-4">
       <ExportWorksControls filters={exportFilters} selectedIds={selectedIds} />
 
-      <section className="rounded-lg border border-stone-200 bg-white p-4">
+      <details className="rounded-lg border border-stone-200 bg-white p-4">
+        <summary className="cursor-pointer list-none">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <h2 className="text-sm font-semibold text-stone-950">批量操作</h2>
             <p className="mt-1 text-sm text-stone-600">
-              当前已选择 {selectedIds.length} 个作品。批量任务会顺序执行，单条失败不会影响整批。
+              {selectedIds.length ? <span className="font-medium text-red-700">已选 {selectedIds.length} 部作品。</span> : "未选择作品。勾选作品后可展开批量操作。"} 批量任务会顺序执行，单条失败不会影响整批。
             </p>
           </div>
           <Link
@@ -112,6 +113,7 @@ export function WorksListClient({ exportFilters, works }: WorksListClientProps) 
             查看批量任务中心
           </Link>
         </div>
+        </summary>
 
         <div className="mt-4 rounded-md border border-stone-200 bg-stone-50 p-3">
           <div className="text-sm font-medium text-stone-950">书名简介生成方式</div>
@@ -175,7 +177,7 @@ export function WorksListClient({ exportFilters, works }: WorksListClientProps) 
             {batchMessage} <Link className="underline" href="/analysis">查看结果</Link>
           </p>
         ) : null}
-      </section>
+      </details>
 
       {works.length ? (
         <label className="inline-flex items-center gap-2 text-sm text-stone-600">
@@ -191,7 +193,7 @@ export function WorksListClient({ exportFilters, works }: WorksListClientProps) 
           </div>
         ) : null}
         {works.map((work) => (
-          <article className="rounded-lg border border-stone-200 bg-white p-5 transition hover:border-red-200" key={work.id}>
+          <article className="rounded-lg border border-stone-200 bg-white p-4 transition hover:border-red-200" key={work.id}>
             <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
               <div className="flex gap-3">
                 <input
@@ -208,13 +210,13 @@ export function WorksListClient({ exportFilters, works }: WorksListClientProps) 
                   <p className="mt-1 text-sm text-stone-500">
                     作者：{work.author || "-"} | 品类：{work.category || "-"} | 作品ID：{work.externalId || "-"}
                   </p>
-                  <p className="mt-3 max-w-3xl line-clamp-2 text-sm text-stone-600" title={work.description}>
+                  <p className="mt-2 max-w-3xl line-clamp-1 text-sm text-stone-600" title={work.description}>
                     {work.description}
                   </p>
                 </div>
               </div>
               <div className="flex flex-wrap gap-2">
-                <StatusBadge>{work.status}</StatusBadge>
+                <StatusBadge>{workStatusLabel(work.status)}</StatusBadge>
                 <StatusBadge tone={reviewStatusTone(work.reviewStatus)}>{reviewStatusLabel(work.reviewStatus)}</StatusBadge>
               </div>
             </div>

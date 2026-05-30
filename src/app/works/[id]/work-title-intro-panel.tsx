@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { ExpandableText } from "@/components/expandable-text";
 import type {
   CoverPromptSuggestion,
   GenerationStrategy,
@@ -217,9 +218,9 @@ export function WorkTitleIntroPanel({ workId }: WorkTitleIntroPanelProps) {
 
           <div className="rounded-md border border-stone-200 p-4">
             <p className="font-medium text-stone-950">新版简介</p>
-            <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-stone-700">
-              {generation.introVariant?.intro || "暂无新版简介。"}
-            </p>
+            <div className="mt-3">
+              <ExpandableText>{generation.introVariant?.intro || "暂无新版简介。"}</ExpandableText>
+            </div>
             <dl className="mt-4 grid gap-3 text-sm md:grid-cols-3">
               <InfoItem label="生成理由" value={generation.introVariant?.reason} />
               <InfoItem label="风格标签" value={generation.introVariant?.styleTag} />

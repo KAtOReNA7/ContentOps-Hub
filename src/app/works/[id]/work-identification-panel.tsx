@@ -66,6 +66,7 @@ export function WorkIdentificationPanel({
   const [error, setError] = useState("");
   const [isRunning, setIsRunning] = useState(false);
   const [isConfirming, setIsConfirming] = useState(false);
+  const [showAllCandidates, setShowAllCandidates] = useState(false);
 
   async function runIdentification() {
     setIsRunning(true);
@@ -245,7 +246,7 @@ export function WorkIdentificationPanel({
           <div className="overflow-x-auto">
             {identification.candidates.length ? (
               <div className="space-y-2">
-                {identification.candidates.map((candidate, index) => (
+                {identification.candidates.slice(0, showAllCandidates ? undefined : 5).map((candidate, index) => (
                   <details
                     className="rounded-md border border-stone-200 bg-white px-3 py-2 text-sm"
                     key={`${candidate.rawRank ?? index}-${candidate.url ?? candidate.platform}-${candidate.title}`}
@@ -260,11 +261,11 @@ export function WorkIdentificationPanel({
                         <span className="text-stone-500">匹配 {candidate.relevanceScore ?? candidate.score}</span>
                         <span className="text-stone-500">价值信号 {candidate.valueSignalScore ?? 0}</span>
                         {candidateTags(candidate).map((tag) => (
-                          <span className="rounded bg-red-50 px-2 py-1 text-xs text-red-700" key={tag}>
+                          <span className={`rounded px-2 py-1 text-xs ${candidateTagClass(tag)}`} key={tag}>
                             {tag}
                           </span>
                         ))}
-                        {candidate.possibleDuplicate ? <span className="rounded bg-amber-50 px-2 py-1 text-xs text-amber-700">疑似重名</span> : null}
+                        {candidate.possibleDuplicate ? <span className="rounded bg-red-50 px-2 py-1 text-xs text-red-700">疑似重名</span> : null}
                         <span className="ml-auto text-xs text-red-700">展开详情</span>
                       </div>
                     </summary>
@@ -298,6 +299,11 @@ export function WorkIdentificationPanel({
                     </div>
                   </details>
                 ))}
+                {identification.candidates.length > 5 ? (
+                  <button className="text-sm font-medium text-red-700 hover:text-red-900" onClick={() => setShowAllCandidates((value) => !value)} type="button">
+                    {showAllCandidates ? "收起候选" : `显示更多候选（剩余 ${identification.candidates.length - 5} 条）`}
+                  </button>
+                ) : null}
               </div>
             ) : (
               <EmptyCandidateDiagnostics identification={identification} />
@@ -309,6 +315,16 @@ export function WorkIdentificationPanel({
       )}
     </section>
   );
+}
+
+function candidateTagClass(tag: string) {
+  if (/书名命中|作者命中/.test(tag)) return "bg-green-50 text-green-700";
+  if (/简介命中/.test(tag)) return "bg-blue-50 text-blue-700";
+  if (/原作平台/.test(tag)) return "bg-purple-50 text-purple-700";
+  if (/影视|IP/.test(tag)) return "bg-orange-50 text-orange-700";
+  if (/社媒|热度/.test(tag)) return "bg-pink-50 text-pink-700";
+  if (/风险|重名/.test(tag)) return "bg-red-50 text-red-700";
+  return "bg-stone-100 text-stone-700";
 }
 
 function InfoCard({ label, value }: { label: string; value: string }) {

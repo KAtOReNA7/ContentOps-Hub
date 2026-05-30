@@ -72,3 +72,35 @@ export function coverStrategyTone(value: string | null | undefined): BadgeTone {
   if (value === "redraw_cover") return "red";
   return "stone";
 }
+
+export function workStatusLabel(value: string | null | undefined): string {
+  return ({ analyzed: "已分析", failed: "失败", imported: "已导入" } as Record<string, string>)[value || ""] ?? value ?? "未设置";
+}
+
+export function renameSuggestionLabel(value: string | null | undefined): string {
+  return ({ avoid: "不建议改名", cautious: "谨慎测试", recommended: "建议测试", strongly_recommended: "强烈建议测试" } as Record<string, string>)[value || ""] ?? value ?? "未生成";
+}
+
+export function generationStrategyLabel(value: string | null | undefined): string {
+  return ({ keep_original: "保留原名", minor_optimization: "轻度优化", rename_test: "多书名测试", heavy_repackage: "重包装" } as Record<string, string>)[value || ""] ?? value ?? "未生成";
+}
+
+export function providerLabel(value: string | null | undefined): string {
+  return ({ mock: "Mock 规则引擎", openai: "OpenAI 文本生成" } as Record<string, string>)[value || ""] ?? value ?? "未设置";
+}
+
+export function experimentRecommendationLabel(value: string | null | undefined): string {
+  return ({ adopt: "建议采用", continue_test: "继续测试", need_more_data: "数据不足", rollback: "建议回退" } as Record<string, string>)[value || ""] ?? value ?? "未复盘";
+}
+
+export function batchStatusLabel(value: string | null | undefined): string {
+  return ({ canceled: "已取消", failed: "失败", partial_success: "部分成功", pending: "待执行", running: "执行中", skipped: "已跳过", success: "成功" } as Record<string, string>)[value || ""] ?? value ?? "未设置";
+}
+
+export function batchStatusTone(value: string | null | undefined): BadgeTone {
+  if (value === "success") return "green";
+  if (value === "running") return "blue";
+  if (value === "partial_success") return "orange";
+  if (value === "failed") return "red";
+  return "stone";
+}

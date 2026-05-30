@@ -195,8 +195,8 @@ function RatingList({ emptyText, items, title }: { emptyText: string; items: str
   const classified = items.map((item) => ({ text: item, importance: messageImportance(item) }));
 
   return (
-    <div className="rounded-md border border-stone-200 p-4">
-      <p className="font-medium text-stone-950">{title}</p>
+    <details className="rounded-md border border-stone-200 p-4" open={classified.length <= 3}>
+      <summary className="cursor-pointer font-medium text-stone-950">{title} <span className="text-xs font-normal text-stone-500">({classified.length})</span></summary>
       {classified.length ? (
         <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-stone-700">
           {classified.map((item) => (
@@ -219,7 +219,7 @@ function RatingList({ emptyText, items, title }: { emptyText: string; items: str
       ) : (
         <p className="mt-3 text-sm text-stone-600">{emptyText}</p>
       )}
-    </div>
+    </details>
   );
 }
 

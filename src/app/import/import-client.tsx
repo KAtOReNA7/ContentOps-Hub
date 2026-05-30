@@ -12,6 +12,8 @@ import {
 } from "@/lib/import/validation";
 import { importColumns } from "@/lib/import/columns";
 
+const recommendedHeaders = importColumns.join(" | ");
+
 type DuplicateResponse = {
   success?: boolean;
   message?: string;
@@ -73,6 +75,7 @@ export function ImportClient() {
   const [lastResult, setLastResult] = useState<ImportResponse | null>(null);
   const [isParsing, setIsParsing] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const summary = useMemo(() => {
     const empty = previewRows.filter((row) => row.empty).length;
@@ -234,6 +237,17 @@ export function ImportClient() {
             <li>建议单次不超过 500 行，便于定位单行错误。</li>
             <li>必填字段只有“书名”；作品 ID、作者、简介、分类强烈建议填写。</li>
           </ul>
+          <div className="rounded-md border border-blue-200 bg-blue-50 p-3">
+            <p className="font-medium text-blue-900">上传前检查清单</p>
+            <p className="mt-2 leading-6 text-blue-800">第一行是表头；书名列不为空；不合并单元格；点击率填写 8.5% 或 0.085；不上传临时副本；不上传加密 Excel。</p>
+          </div>
+          <div className="rounded-md bg-stone-50 p-3">
+            <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+              <p className="font-medium text-stone-900">推荐表头，可直接复制</p>
+              <button className="w-fit rounded-md border border-stone-300 bg-white px-3 py-1.5 text-xs hover:bg-stone-100" onClick={async () => { await navigator.clipboard.writeText(recommendedHeaders); setCopied(true); }} type="button">{copied ? "已复制" : "复制推荐表头"}</button>
+            </div>
+            <p className="mt-2 break-words text-xs leading-5 text-stone-600">{recommendedHeaders}</p>
+          </div>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[760px] text-left">
               <thead className="bg-stone-50 text-stone-600">

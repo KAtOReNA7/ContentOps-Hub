@@ -2,6 +2,7 @@ import { StatusBadge } from "@/components/status-badge";
 
 export default async function SettingsPage() {
   const settings = buildSettings();
+  const operationalSettings = buildOperationalSettings();
 
   return (
     <div className="space-y-6">
@@ -12,19 +13,21 @@ export default async function SettingsPage() {
         </p>
       </div>
 
-      <section className="grid gap-4 md:grid-cols-2">
+      <section>
+        <h2 className="text-sm font-semibold text-stone-700">运营视图</h2>
+        <div className="mt-3 grid gap-4 md:grid-cols-2">
+          {operationalSettings.map((setting) => <SettingCard key={setting.key} setting={setting} />)}
+        </div>
+      </section>
+
+      <details className="rounded-lg border border-stone-200 bg-white p-5">
+        <summary className="cursor-pointer font-semibold text-stone-950">技术视图：环境变量状态</summary>
+      <section className="mt-4 grid gap-4 md:grid-cols-2">
         {settings.map((setting) => (
-          <div className="rounded-lg border border-stone-200 bg-white p-5" key={setting.key}>
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <h2 className="font-semibold text-stone-950">{setting.label}</h2>
-                <p className="mt-2 text-sm text-stone-600">{setting.description}</p>
-              </div>
-              <StatusBadge tone={setting.tone}>{setting.value}</StatusBadge>
-            </div>
-          </div>
+          <SettingCard key={setting.key} setting={setting} />
         ))}
       </section>
+      </details>
     </div>
   );
 }
@@ -145,6 +148,23 @@ function baseUrlHostLabel(value: string): string {
   } catch {
     return "已配置";
   }
+}
+
+function SettingCard({ setting }: { setting: { description: string; key: string; label: string; tone: "stone" | "green" | "amber" | "blue"; value: string } }) {
+  return <div className="rounded-lg border border-stone-200 bg-white p-5"><div className="flex items-start justify-between gap-4"><div><h3 className="font-semibold text-stone-950">{setting.label}</h3><p className="mt-2 text-sm text-stone-600">{setting.description}</p></div><StatusBadge tone={setting.tone}>{setting.value}</StatusBadge></div></div>;
+}
+
+function buildOperationalSettings() {
+  const searchProvider = process.env.SEARCH_PROVIDER?.trim() || "mock";
+  return [
+    { key: "op-search", label: "真实搜索", value: searchProvider === "mock" ? "未启用" : "已启用", tone: searchProvider === "mock" ? "stone" : "green", description: "默认保持 Mock；真实搜索只在用户主动触发时调用。" },
+    { key: "op-search-service", label: "搜索服务", value: searchProvider === "mock" ? "Mock" : searchProvider === "real" ? "百度千帆 / 已配置服务" : "自定义", tone: "blue", description: "显示当前识别搜索来源，不显示密钥。" },
+    { key: "op-search-key", label: "搜索密钥", value: process.env.SEARCH_API_KEY ? "已配置" : "未配置", tone: process.env.SEARCH_API_KEY ? "green" : "amber", description: "只判断是否存在，不展示任何内容。" },
+    { key: "op-openai-text", label: "OpenAI 文本生成", value: process.env.OPENAI_API_KEY && process.env.OPENAI_TEXT_MODEL ? "已配置" : "未配置", tone: process.env.OPENAI_API_KEY && process.env.OPENAI_TEXT_MODEL ? "green" : "amber", description: "仅用户主动选择 OpenAI 时调用。" },
+    { key: "op-openai-image", label: "OpenAI 图片生成", value: process.env.OPENAI_IMAGE_MODEL ? "已配置" : "未配置", tone: process.env.OPENAI_IMAGE_MODEL ? "green" : "amber", description: "仅单本作品确认成本后手动调用。" },
+    { key: "op-batch-image", label: "批量图片生成", value: "默认关闭", tone: "stone", description: "避免图片生成 API 成本失控。" },
+    { key: "op-cost", label: "成本策略", value: "手动触发", tone: "green", description: "真实搜索、OpenAI 文本和图片均不默认批量执行。" },
+  ] as const;
 }
 
 function safeHostLabel(value: string): string {
