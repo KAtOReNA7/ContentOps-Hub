@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="docs/assets/readme-hero.svg" alt="内容运营综合管理平台" width="100%" />
+  <img src="docs/assets/readme/readme-hero.png" alt="ContentOps Hub" width="100%" />
 
   <h1>内容运营综合管理平台</h1>
 
@@ -33,6 +33,28 @@
 - 如何把运营建议导出成可交付 Excel / ZIP
 
 系统默认优先使用 Mock / 本地规则跑通 MVP。OpenAI 文本生成和 ChatGPT Image2 封面重绘均为用户手动触发，不默认批量调用。
+
+## Interface Preview
+
+<div align="center">
+  <img src="docs/assets/readme/readme-dashboard.png" alt="ContentOps Hub Dashboard" width="100%" />
+  <p><em>运营看板：从导入、识别、评级、审核到复盘与效果洞察的整体进度视图。</em></p>
+</div>
+
+<table>
+  <tr>
+    <td width="50%">
+      <img src="docs/assets/readme/readme-work-detail.png" alt="Work Detail Preview" width="100%" />
+      <p align="center"><strong>单作品运营详情</strong></p>
+      <p align="center">聚合搜索证据、价值评级、书名方案、简介生成、封面策略与下一步操作。</p>
+    </td>
+    <td width="50%">
+      <img src="docs/assets/readme/readme-batch-jobs.png" alt="Batch Job Center Preview" width="100%" />
+      <p align="center"><strong>批量任务中心</strong></p>
+      <p align="center">支持批量识别、评级、书名简介生成和封面评估，单条失败不影响整体。</p>
+    </td>
+  </tr>
+</table>
 
 ## 已完成能力
 
