@@ -1378,3 +1378,12 @@ Prisma 同步：
 - 设置页补充运营视图，技术环境状态改为默认折叠展示，不展示密钥内容。
 - Excel 导出在保留原有总表的同时新增运营总览、识别与评级详情、书名简介方案、封面处理、测试复盘、效果回流 6 个工作表。
 - 本阶段没有修改 Prisma schema，没有新增依赖，没有调用 OpenAI。
+## 阶段 19.1 文档同步
+
+更新时间：2026-05-30
+
+- 已将 `README.md`、`docs/CURRENT_STATUS.md` 和 `docs/project-handoff.md` 同步到阶段 19.1。
+- 已更新 `docs/export-excel.md`，补充测试复盘、效果回流和 6 个分类工作表说明。
+- 已更新 `docs/batch-jobs.md`，补充批量书名简介 provider 选择、成本确认边界和效果回流职责说明。
+- 当前 GitHub 远程仓库为 `https://github.com/KAtOReNA7/ContentOps-Hub.git`。
+- 本次仅修改项目说明文档，没有修改业务代码、数据库模型或环境变量。
