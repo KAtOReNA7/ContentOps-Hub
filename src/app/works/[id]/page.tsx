@@ -2,12 +2,14 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { WorkCoverPanel } from "@/app/works/[id]/work-cover-panel";
 import { WorkExportButton } from "@/app/works/[id]/work-export-button";
+import { WorkExperimentPanel, type ExperimentReviewView, type ExperimentResultView } from "@/app/works/[id]/work-experiment-panel";
 import { WorkIdentificationPanel, type WorkIdentificationView } from "@/app/works/[id]/work-identification-panel";
 import { WorkRatingPanel } from "@/app/works/[id]/work-rating-panel";
 import { WorkReviewPanel } from "@/app/works/[id]/work-review-panel";
 import { WorkTitleIntroPanel } from "@/app/works/[id]/work-title-intro-panel";
 import type { CandidateWork, FinalMatch, SearchEvidence, SearchResultItem, SourceSummary } from "@/lib/adapters/search-adapter";
 import { prisma } from "@/server/db";
+import { getExperimentResultsForWork, getLatestExperimentReview } from "@/lib/experiments/experiment-service";
 
 type WorkDetailPageProps = {
   params: Promise<{ id: string }>;
@@ -15,7 +17,8 @@ type WorkDetailPageProps = {
 
 export default async function WorkDetailPage({ params }: WorkDetailPageProps) {
   const { id } = await params;
-  const work = await prisma.work.findUnique({
+  const [work, experimentResults, experimentReview] = await Promise.all([
+    prisma.work.findUnique({
     where: { id },
     include: {
       identifications: {
@@ -23,7 +26,10 @@ export default async function WorkDetailPage({ params }: WorkDetailPageProps) {
         take: 1,
       },
     },
-  });
+    }),
+    getExperimentResultsForWork(id),
+    getLatestExperimentReview(id),
+  ]);
 
   if (!work) {
     notFound();
@@ -116,9 +122,60 @@ export default async function WorkDetailPage({ params }: WorkDetailPageProps) {
       />
       <WorkTitleIntroPanel workId={work.id} />
       <WorkCoverPanel workId={work.id} />
+      <WorkExperimentPanel
+        workId={work.id}
+        results={experimentResults.map(toExperimentResultView)}
+        review={experimentReview ? toExperimentReviewView(experimentReview) : null}
+      />
       <WorkReviewPanel workId={work.id} />
     </div>
   );
+}
+
+function toExperimentResultView(result: {
+  id: string;
+  experimentName: string | null;
+  groupType: string;
+  variantName: string | null;
+  title: string;
+  exposureCount: number | null;
+  ctr: number | null;
+  conversionRate: number | null;
+  finishRate: number | null;
+  revenue: number | null;
+}): ExperimentResultView {
+  return {
+    id: result.id,
+    experimentName: result.experimentName,
+    groupType: result.groupType,
+    variantName: result.variantName,
+    title: result.title,
+    exposureCount: result.exposureCount,
+    ctr: result.ctr,
+    conversionRate: result.conversionRate,
+    finishRate: result.finishRate,
+    revenue: result.revenue,
+  };
+}
+
+function toExperimentReviewView(review: Awaited<ReturnType<typeof getLatestExperimentReview>>): ExperimentReviewView | null {
+  if (!review) return null;
+
+  return {
+    id: review.id,
+    experimentName: review.experimentName,
+    conclusion: review.conclusion,
+    recommendation: review.recommendation,
+    ctrLift: review.ctrLift,
+    conversionLift: review.conversionLift,
+    finishRateLift: review.finishRateLift,
+    revenueLift: review.revenueLift,
+    confidenceLevel: review.confidenceLevel,
+    riskNotes: safeJsonParse<string[]>(review.riskNotesJson || "[]", []),
+    evidence: safeJsonParse<string[]>(review.evidenceJson || "[]", []),
+    controlResult: toExperimentResultView(review.controlResult),
+    winnerResult: review.winnerResult ? toExperimentResultView(review.winnerResult) : null,
+  };
 }
 
 function safeJsonParse<T>(value: string, fallback: T): T {

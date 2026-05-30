@@ -41,6 +41,8 @@ model Work {
   coverEvaluations WorkCoverEvaluation[]
   coverRenders     WorkCoverRender[]
   batchJobItems     BatchJobItem[]
+  experimentResults WorkExperimentResult[]
+  experimentReviews WorkExperimentReview[]
 }
 
 model AnalysisResult {
@@ -249,6 +251,70 @@ model BatchJobItem {
   @@index([workId])
   @@index([status])
   @@index([step])
+}
+
+model WorkExperimentResult {
+  id                String   @id @default(cuid())
+  workId            String
+  experimentName    String?
+  groupType         String
+  variantName       String?
+  title             String
+  intro             String?
+  coverUrl          String?
+  coverSource       String?
+  exposureCount     Int?
+  clickCount        Int?
+  ctr               Float?
+  playCount         Int?
+  conversionCount   Int?
+  conversionRate    Float?
+  finishRate        Float?
+  revenue           Float?
+  testStartDate     DateTime?
+  testEndDate       DateTime?
+  dataSource        String?
+  importedAt        DateTime @default(now())
+  note              String?
+
+  work Work @relation(fields: [workId], references: [id], onDelete: Cascade)
+  controlReviews WorkExperimentReview[] @relation("ControlExperimentResult")
+  winnerReviews  WorkExperimentReview[] @relation("WinnerExperimentResult")
+
+  @@index([workId])
+  @@index([experimentName])
+  @@index([groupType])
+  @@index([importedAt])
+}
+
+model WorkExperimentReview {
+  id                 String   @id @default(cuid())
+  workId             String
+  experimentName     String
+  controlResultId    String
+  winnerResultId     String?
+  conclusion         String
+  recommendation     String
+  ctrLift            Float?
+  ctrLiftRate        Float?
+  conversionLift     Float?
+  conversionLiftRate Float?
+  finishRateLift     Float?
+  revenueLift        Float?
+  confidenceLevel    String
+  riskNotesJson      String?
+  evidenceJson       String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  work          Work                  @relation(fields: [workId], references: [id], onDelete: Cascade)
+  controlResult WorkExperimentResult  @relation("ControlExperimentResult", fields: [controlResultId], references: [id], onDelete: Cascade)
+  winnerResult  WorkExperimentResult? @relation("WinnerExperimentResult", fields: [winnerResultId], references: [id], onDelete: SetNull)
+
+  @@index([workId])
+  @@index([experimentName])
+  @@index([recommendation])
+  @@index([confidenceLevel])
 }
 
 enum WorkStatus {

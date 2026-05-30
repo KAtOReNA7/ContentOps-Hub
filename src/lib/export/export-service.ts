@@ -21,6 +21,12 @@ export const workExportInclude = {
   coverAssets: { orderBy: { createdAt: "desc" }, take: 3 },
   coverEvaluations: { orderBy: { createdAt: "desc" }, take: 1 },
   coverRenders: { orderBy: { createdAt: "desc" }, take: 16 },
+  experimentReviews: {
+    include: { controlResult: true, winnerResult: true },
+    orderBy: { createdAt: "desc" },
+    take: 1,
+  },
+  experimentResults: { orderBy: { importedAt: "desc" }, take: 10 },
   identifications: { orderBy: { updatedAt: "desc" }, take: 1 },
   ratings: { orderBy: { createdAt: "desc" }, take: 1 },
   titleIntroGenerations: { orderBy: { createdAt: "desc" }, take: 1 },
@@ -123,6 +129,10 @@ export function toExportRow(work: WorkForExport): ExportWorkRow {
   const latestPortraitRender = localSharpRenders.find((render) => render.outputRatio === "3:4") ?? null;
   const latestRedrawSquare = redrawRenders.find((render) => render.outputRatio === "1:1") ?? null;
   const latestRedrawPortrait = redrawRenders.find((render) => render.outputRatio === "3:4") ?? null;
+  const experimentReview = work.experimentReviews[0] ?? null;
+  const controlExperiment = experimentReview?.controlResult ?? null;
+  const winnerExperiment = experimentReview?.winnerResult ?? null;
+  const experimentRisks = safeJsonParse<string[]>(experimentReview?.riskNotesJson, []);
   const finalMatch = safeJsonParse<FinalMatch | null>(identification?.finalMatchJson, null);
   const identificationRisks = safeJsonParse<string[]>(identification?.risksJson, []);
   const ratingReasons = safeJsonParse<string[]>(rating?.reasonsJson, []);
@@ -140,7 +150,7 @@ export function toExportRow(work: WorkForExport): ExportWorkRow {
   const finalIntro = text(work.finalIntro) || text(introVariant?.intro) || work.description;
   const finalCoverUrl = text(work.finalCoverUrl);
 
-  return {
+  return withExperimentExportFields({
     "作品 ID": text(work.externalId),
     "原书名 title": work.title,
     "作者 author": text(work.author),
@@ -212,7 +222,7 @@ export function toExportRow(work: WorkForExport): ExportWorkRow {
     "Image2重绘1:1地址": latestRedrawSquare?.status === "success" ? `/api/cover-renders/${latestRedrawSquare.id}/file` : "",
     "Image2重绘3:4地址": latestRedrawPortrait?.status === "success" ? `/api/cover-renders/${latestRedrawPortrait.id}/file` : "",
     "导出时间 exportedAt": exportedAt,
-  };
+  }, { controlExperiment, experimentReview, experimentRisks, winnerExperiment, work });
 }
 
 function safeJsonParse<T>(value: string | null | undefined, fallback: T): T {
@@ -223,6 +233,59 @@ function safeJsonParse<T>(value: string | null | undefined, fallback: T): T {
   } catch {
     return fallback;
   }
+}
+
+function withExperimentExportFields(
+  row: ExportWorkRow,
+  context: {
+    controlExperiment: {
+      title: string;
+      ctr: number | null;
+      conversionRate: number | null;
+    } | null;
+    experimentReview: {
+      experimentName: string;
+      ctrLift: number | null;
+      conversionLift: number | null;
+      finishRateLift: number | null;
+      revenueLift: number | null;
+      recommendation: string;
+      conclusion: string;
+      confidenceLevel: string;
+    } | null;
+    experimentRisks: string[];
+    winnerExperiment: {
+      variantName: string | null;
+      title: string;
+      ctr: number | null;
+      conversionRate: number | null;
+    } | null;
+    work: {
+      experimentResults: Array<{ experimentName: string | null }>;
+    };
+  },
+): ExportWorkRow {
+  return {
+    ...row,
+    "实验名称":
+      text(context.experimentReview?.experimentName) ||
+      (context.work.experimentResults.length ? text(context.work.experimentResults[0]?.experimentName) : "未导入测试结果"),
+    "对照组书名": text(context.controlExperiment?.title),
+    "胜出实验组": text(context.winnerExperiment?.variantName),
+    "胜出书名": text(context.winnerExperiment?.title),
+    "对照组 CTR": percent(context.controlExperiment?.ctr),
+    "胜出组 CTR": percent(context.winnerExperiment?.ctr),
+    "CTR 提升": percent(context.experimentReview?.ctrLift),
+    "对照组转化率": percent(context.controlExperiment?.conversionRate),
+    "胜出组转化率": percent(context.winnerExperiment?.conversionRate),
+    "转化率提升": percent(context.experimentReview?.conversionLift),
+    "完播率变化": percent(context.experimentReview?.finishRateLift),
+    "收入变化": context.experimentReview?.revenueLift ?? "",
+    "复盘推荐动作": experimentRecommendationLabel(context.experimentReview?.recommendation),
+    "复盘结论": text(context.experimentReview?.conclusion),
+    "复盘置信度": experimentConfidenceLabel(context.experimentReview?.confidenceLevel),
+    "复盘风险提示": joinList(context.experimentRisks),
+  };
 }
 
 function joinList(value: string[]): string {
@@ -259,6 +322,23 @@ function percent(value: number | null | undefined): string {
 function booleanLabel(value: boolean | null | undefined): string {
   if (value === true) return "是";
   if (value === false) return "否";
+  return "";
+}
+
+function experimentRecommendationLabel(value: string | null | undefined): string {
+  const labels: Record<string, string> = {
+    adopt: "建议采用",
+    continue_test: "继续测试",
+    need_more_data: "数据不足",
+    rollback: "建议回退",
+  };
+  return value ? labels[value] ?? value : "";
+}
+
+function experimentConfidenceLabel(value: string | null | undefined): string {
+  if (value === "high") return "高";
+  if (value === "medium") return "中";
+  if (value === "low") return "低";
   return "";
 }
 
