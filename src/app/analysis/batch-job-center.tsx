@@ -366,6 +366,9 @@ function formatSummary(value: string | null) {
 
 function summaryValueLabel(key: string, value: unknown) {
   if (key === "provider") return providerLabel(String(value ?? ""));
+  if (key === "identifyProviderMode") return value === "configured" ? "真实搜索识别" : "Mock 本地识别";
+  if (key === "actualSearchProvider") return value === "mock" ? "Mock" : String(value ?? "-");
+  if (key === "searchFallback") return value ? "是，本次使用 Mock fallback" : "否";
   if (key === "strategy") {
     const strategy = String(value ?? "");
     const coverLabel = coverStrategyLabel(strategy);
@@ -377,11 +380,14 @@ function summaryValueLabel(key: string, value: unknown) {
 function summaryKeyLabel(key: string) {
   const labels: Record<string, string> = {
     candidateCount: "候选数",
+    actualSearchProvider: "实际搜索来源",
+    identifyProviderMode: "识别请求方式",
     confidence: "置信度",
     coverRating: "封面评级",
     coverScore: "封面分",
     generatedCount: "生成数",
     provider: "来源",
+    searchFallback: "是否 fallback",
     rating: "评级",
     score: "分数",
     strategy: "策略",

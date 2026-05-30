@@ -106,6 +106,10 @@ export type SearchProviderConfig = {
   baseUrl: string | null;
   timeoutMs: number;
   maxResults: number;
+  expandedQueryLimit: number;
+  queryDelayMs: number;
+  retry429Count: number;
+  retry429DelayMs: number;
 };
 
 export interface SearchProvider {
@@ -204,7 +208,12 @@ export type SourceSummary = {
   filterReasons?: string[];
   baseURLHost?: string | null;
   httpStatus?: number | null;
+  requestedProviderMode?: SearchProviderMode;
+  configuredProvider?: string;
+  searchFallback?: boolean;
 };
+
+export type SearchProviderMode = "mock" | "configured";
 
 export type WorkIdentificationResult = {
   candidates: CandidateWork[];
@@ -294,43 +303,56 @@ async function searchQianfanWeb(query: string, config: SearchProviderConfig): Pr
     throw new Error("SEARCH_BASE_URL 或 SEARCH_API_KEY 未配置。");
   }
 
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), config.timeoutMs);
+  for (let attempt = 0; attempt <= config.retry429Count; attempt++) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), config.timeoutMs);
 
-  try {
-    const response = await fetch(config.baseUrl, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${config.apiKey}`,
-        "Content-Type": "application/json",
-        "X-Appbuilder-Authorization": `Bearer ${config.apiKey}`,
-      },
-      body: JSON.stringify({
-        messages: [
-          {
-            role: "user",
-            content: truncateSearchQuery(query),
-          },
-        ],
-        search_source: "baidu_search_v2",
-        resource_type_filter: [{ type: "web", top_k: config.maxResults }],
-      }),
-      signal: controller.signal,
-    });
+    try {
+      const response = await fetch(config.baseUrl, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${config.apiKey}`,
+          "Content-Type": "application/json",
+          "X-Appbuilder-Authorization": `Bearer ${config.apiKey}`,
+        },
+        body: JSON.stringify({
+          messages: [
+            {
+              role: "user",
+              content: truncateSearchQuery(query),
+            },
+          ],
+          search_source: "baidu_search_v2",
+          resource_type_filter: [{ type: "web", top_k: config.maxResults }],
+        }),
+        signal: controller.signal,
+      });
 
-    if (!response.ok) {
-      throw new Error(`百度千帆搜索请求失败：HTTP ${response.status}`);
+      if (response.status === 429 && attempt < config.retry429Count) {
+        await sleep(getRetryAfterMs(response.headers.get("retry-after"), config.retry429DelayMs));
+        continue;
+      }
+
+      if (!response.ok) {
+        throw new Error(
+          response.status === 429
+            ? "百度千帆搜索请求失败：HTTP 429。请求触发限流或账号额度不足，请稍后重试，或检查百度千帆配额。"
+            : `百度千帆搜索请求失败：HTTP ${response.status}`,
+        );
+      }
+
+      const payload = await response.json();
+
+      return normalizeProviderResults(payload, config.maxResults, {
+        baseURLHost: safeHost(config.baseUrl),
+        httpStatus: response.status,
+      });
+    } finally {
+      clearTimeout(timer);
     }
-
-    const payload = await response.json();
-
-    return normalizeProviderResults(payload, config.maxResults, {
-      baseURLHost: safeHost(config.baseUrl),
-      httpStatus: response.status,
-    });
-  } finally {
-    clearTimeout(timer);
   }
+
+  throw new Error("百度千帆搜索请求失败：HTTP 429。请求触发限流或账号额度不足。");
 }
 
 export const MockSearchAdapter: SearchAdapter = {
@@ -361,6 +383,10 @@ export function getSearchProviderConfig(): SearchProviderConfig {
     baseUrl: process.env.SEARCH_BASE_URL?.trim() || null,
     timeoutMs: parsePositiveInteger(process.env.SEARCH_TIMEOUT_MS, 30_000),
     maxResults: Math.min(parsePositiveInteger(process.env.SEARCH_MAX_RESULTS, 10), 20),
+    expandedQueryLimit: Math.min(parsePositiveInteger(process.env.SEARCH_EXPANDED_QUERY_LIMIT, 1), 4),
+    queryDelayMs: parsePositiveInteger(process.env.SEARCH_QUERY_DELAY_MS, 800),
+    retry429Count: Math.min(parseNonNegativeInteger(process.env.SEARCH_429_RETRY_COUNT, 1), 3),
+    retry429DelayMs: parsePositiveInteger(process.env.SEARCH_429_RETRY_DELAY_MS, 1_500),
   };
 }
 
@@ -372,18 +398,40 @@ export async function identifyWorkWithConfiguredProvider(
   const query = buildSearchQuery(work);
 
   if (config.provider === "mock") {
-    return identifyWorkFromSearchResults(work, query, await MockSearchProvider.search(query, work, config), "mock");
+    const result = identifyWorkFromSearchResults(work, query, await MockSearchProvider.search(query, work, config), "mock");
+
+    return {
+      ...result,
+      risks: Array.from(new Set([...result.risks, "当前环境 SEARCH_PROVIDER=mock，本次未调用真实搜索。"])),
+      riskHints: Array.from(new Set([...result.riskHints, "当前环境 SEARCH_PROVIDER=mock，本次未调用真实搜索。"])),
+      sourceSummary: {
+        ...result.sourceSummary,
+        requestedProviderMode: "configured",
+        configuredProvider: config.provider,
+        searchFallback: false,
+      },
+    };
   }
 
   try {
     const response = await searchWithExpandedQueries(work, config);
 
-    return identifyWorkFromSearchResults(
+    const result = identifyWorkFromSearchResults(
       work,
       query,
       response,
       config.provider,
     );
+
+    return {
+      ...result,
+      sourceSummary: {
+        ...result.sourceSummary,
+        requestedProviderMode: "configured",
+        configuredProvider: config.provider,
+        searchFallback: false,
+      },
+    };
   } catch (error) {
     const fallback = identifyWorkFromSearchResults(work, query, await MockSearchProvider.search(query, work, config), "mock");
     const message = error instanceof Error ? error.message : "真实搜索失败，已回退 Mock。";
@@ -403,6 +451,12 @@ export async function identifyWorkWithConfiguredProvider(
         },
         ...fallback.evidence,
       ],
+      sourceSummary: {
+        ...fallback.sourceSummary,
+        requestedProviderMode: "configured",
+        configuredProvider: config.provider,
+        searchFallback: true,
+      },
     };
   }
 }
@@ -411,7 +465,26 @@ export async function identifyWorkWithMock(input: SearchWorkInput | LegacySearch
   const work = normalizeInput(input);
   const query = buildSearchQuery(work);
 
-  return identifyWorkFromSearchResults(work, query, await MockSearchProvider.search(query, work, getSearchProviderConfig()), "mock");
+  const result = identifyWorkFromSearchResults(work, query, await MockSearchProvider.search(query, work, getSearchProviderConfig()), "mock");
+
+  return {
+    ...result,
+    sourceSummary: {
+      ...result.sourceSummary,
+      requestedProviderMode: "mock",
+      configuredProvider: "mock",
+      searchFallback: false,
+    },
+  };
+}
+
+export function identifyWorkWithProviderMode(
+  input: SearchWorkInput | LegacySearchWorkInput,
+  options: { searchProviderMode: SearchProviderMode },
+): Promise<WorkIdentificationResult> {
+  return options.searchProviderMode === "configured"
+    ? identifyWorkWithConfiguredProvider(input)
+    : identifyWorkWithMock(input);
 }
 
 export function applyCandidateRelevanceGate(
@@ -465,18 +538,22 @@ function buildExpandedSearchQueries(work: SearchWorkInput): string[] {
     .map((item) => item.replace(/\s+/g, " ").trim())
     .filter(Boolean);
 
-  return Array.from(new Set(queries)).slice(0, 4);
+  return Array.from(new Set(queries));
 }
 
 async function searchWithExpandedQueries(
   work: SearchWorkInput,
   config: SearchProviderConfig,
 ): Promise<SearchProviderResponse> {
-  const queries = buildExpandedSearchQueries(work);
+  const queries = buildExpandedSearchQueries(work).slice(0, config.expandedQueryLimit);
   const responses: SearchProviderResponse[] = [];
   const failedReasons: string[] = [];
 
-  for (const query of queries) {
+  for (const [index, query] of queries.entries()) {
+    if (index > 0) {
+      await sleep(config.queryDelayMs);
+    }
+
     try {
       responses.push(await RealSearchProvider.search(query, work, config));
     } catch (error) {
@@ -1503,6 +1580,22 @@ function parsePositiveInteger(value: string | undefined, fallback: number): numb
   const parsed = Number(value);
 
   return Number.isFinite(parsed) && parsed > 0 ? Math.trunc(parsed) : fallback;
+}
+
+function parseNonNegativeInteger(value: string | undefined, fallback: number): number {
+  const parsed = Number(value);
+
+  return Number.isFinite(parsed) && parsed >= 0 ? Math.trunc(parsed) : fallback;
+}
+
+function getRetryAfterMs(value: string | null, fallback: number): number {
+  const seconds = Number(value);
+
+  return Number.isFinite(seconds) && seconds > 0 ? Math.max(Math.trunc(seconds * 1_000), fallback) : fallback;
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function stringValue(value: unknown): string {

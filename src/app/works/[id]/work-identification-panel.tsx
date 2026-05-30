@@ -67,14 +67,25 @@ export function WorkIdentificationPanel({
   const [isRunning, setIsRunning] = useState(false);
   const [isConfirming, setIsConfirming] = useState(false);
   const [showAllCandidates, setShowAllCandidates] = useState(false);
+  const [searchProviderMode, setSearchProviderMode] = useState<"mock" | "configured">("mock");
+  const [costRiskAccepted, setCostRiskAccepted] = useState(false);
 
   async function runIdentification() {
+    if (searchProviderMode === "configured" && !costRiskAccepted) {
+      setError("选择真实搜索识别时，请先确认可能产生外部 API 费用。");
+      return;
+    }
+
     setIsRunning(true);
     setMessage("");
     setError("");
 
     try {
-      const response = await fetch(`/api/works/${workId}/identify`, { method: "POST" });
+      const response = await fetch(`/api/works/${workId}/identify`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ searchProviderMode, costRiskAccepted }),
+      });
       const payload = (await response.json()) as IdentifyResponse;
 
       if (!response.ok || !payload.success) {
@@ -156,11 +167,46 @@ export function WorkIdentificationPanel({
         </button>
       </div>
 
+      <div className="mt-4 rounded-md border border-stone-200 bg-stone-50 p-3">
+        <p className="text-sm font-medium text-stone-950">识别方式</p>
+        <div className="mt-3 grid gap-2 md:grid-cols-2">
+          <ProviderOption
+            checked={searchProviderMode === "mock"}
+            description="使用本地 Mock 结果，不调用外部搜索 API。"
+            onChange={() => setSearchProviderMode("mock")}
+            title="Mock 本地识别"
+          />
+          <ProviderOption
+            checked={searchProviderMode === "configured"}
+            description="调用服务端 SEARCH_PROVIDER 配置的真实搜索服务，可能产生费用。"
+            onChange={() => setSearchProviderMode("configured")}
+            title="真实搜索识别"
+          />
+        </div>
+        {searchProviderMode === "configured" ? (
+          <label className="mt-3 flex items-start gap-2 text-sm text-stone-700">
+            <input checked={costRiskAccepted} className="mt-1" onChange={(event) => setCostRiskAccepted(event.target.checked)} type="checkbox" />
+            <span>我确认本次识别可能调用外部搜索 API 并产生费用。</span>
+          </label>
+        ) : null}
+      </div>
+
       {message ? <p className="mt-4 rounded-md bg-green-50 px-3 py-2 text-sm text-green-700">{message}</p> : null}
       {error ? <p className="mt-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p> : null}
 
       {identification ? (
         <div className="mt-5 space-y-5">
+          {identification.sourceSummary?.searchFallback ? (
+            <p className="rounded-md border border-red-200 bg-red-50 p-3 text-sm font-medium text-red-800">
+              真实搜索失败，本次结果来自 Mock fallback，请勿直接作为正式识别依据。
+            </p>
+          ) : null}
+          {identification.sourceSummary?.requestedProviderMode === "configured" &&
+          identification.sourceSummary.configuredProvider === "mock" ? (
+            <p className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm font-medium text-amber-900">
+              当前环境 SEARCH_PROVIDER=mock，本次未调用真实搜索。
+            </p>
+          ) : null}
           <div className="rounded-md bg-red-50 p-4">
             <p className="text-sm text-red-700">最终匹配结果</p>
             <h3 className="mt-2 font-semibold text-stone-950">
@@ -175,6 +221,7 @@ export function WorkIdentificationPanel({
           </div>
 
           <div className="grid gap-4 md:grid-cols-3">
+            <InfoCard label="本次识别来源" value={identificationSourceLabel(identification)} />
             <InfoCard label="搜索 provider" value={identification.searchProvider || "mock"} />
             <InfoCard label="搜索 query" value={identification.searchQuery || "-"} />
             <InfoCard
@@ -185,6 +232,9 @@ export function WorkIdentificationPanel({
                   : "-"
               }
             />
+            <InfoCard label="baseURL host" value={identification.sourceSummary?.baseURLHost || "-"} />
+            <InfoCard label="HTTP 状态" value={String(identification.sourceSummary?.httpStatus ?? "-")} />
+            <InfoCard label="是否发生 fallback" value={identification.sourceSummary?.searchFallback ? "是" : "否"} />
           </div>
 
           {identification.sourceSummary ? <SourceSummaryPanel summary={identification.sourceSummary} /> : null}
@@ -325,6 +375,24 @@ function candidateTagClass(tag: string) {
   if (/社媒|热度/.test(tag)) return "bg-pink-50 text-pink-700";
   if (/风险|重名/.test(tag)) return "bg-red-50 text-red-700";
   return "bg-stone-100 text-stone-700";
+}
+
+function identificationSourceLabel(identification: WorkIdentificationView) {
+  if (identification.sourceSummary?.searchFallback) return "Mock fallback";
+  if (identification.searchProvider === "mock") return "Mock";
+  return "真实搜索";
+}
+
+function ProviderOption({ checked, description, onChange, title }: { checked: boolean; description: string; onChange: () => void; title: string }) {
+  return (
+    <label className="flex cursor-pointer gap-2 rounded-md border border-stone-200 bg-white p-3 text-sm text-stone-700 hover:border-red-200">
+      <input checked={checked} className="mt-1" name="searchProviderMode" onChange={onChange} type="radio" />
+      <span>
+        <span className="block font-medium text-stone-950">{title}</span>
+        <span className="mt-1 block text-stone-500">{description}</span>
+      </span>
+    </label>
+  );
 }
 
 function InfoCard({ label, value }: { label: string; value: string }) {

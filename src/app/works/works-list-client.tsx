@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { BatchJobProgressModal } from "@/components/batch-job-progress-modal";
 import { StatusBadge, reviewStatusLabel, reviewStatusTone, workStatusLabel } from "@/components/status-badge";
 import { ExportWorksControls } from "@/app/works/export-all-button";
 
@@ -31,7 +32,9 @@ type WorksListClientProps = {
 export function WorksListClient({ exportFilters, works }: WorksListClientProps) {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [costRiskAccepted, setCostRiskAccepted] = useState(false);
+  const [identifyProviderMode, setIdentifyProviderMode] = useState<"mock" | "configured">("mock");
   const [titleIntroProvider, setTitleIntroProvider] = useState<"mock" | "openai">("mock");
+  const [progressJobId, setProgressJobId] = useState<string | null>(null);
   const [batchLoading, setBatchLoading] = useState<string | null>(null);
   const [batchMessage, setBatchMessage] = useState<string | null>(null);
   const [batchError, setBatchError] = useState<string | null>(null);
@@ -70,6 +73,7 @@ export function WorksListClient({ exportFilters, works }: WorksListClientProps) 
           workIds: selectedIds,
           steps: [step],
           costRiskAccepted,
+          identifyProviderMode: step === "identify" ? identifyProviderMode : "mock",
           titleIntroProvider: step === "title_intro" ? titleIntroProvider : "mock",
           note: `作品列表批量操作：${batchStepLabel(step)}`,
         }),
@@ -85,7 +89,8 @@ export function WorksListClient({ exportFilters, works }: WorksListClientProps) 
         throw new Error([payload.message || `HTTP ${response.status}`, ...(payload.errors || [])].join(" | "));
       }
 
-      setBatchMessage(`批量任务已完成创建并执行。任务ID：${payload.data?.id || "-"}`);
+      setProgressJobId(payload.data?.id ?? null);
+      setBatchMessage(`批量任务已创建，正在后台顺序执行。任务ID：${payload.data?.id || "-"}`);
     } catch (error) {
       setBatchError(error instanceof Error ? error.message : "创建批量任务失败。");
     } finally {
@@ -95,6 +100,7 @@ export function WorksListClient({ exportFilters, works }: WorksListClientProps) 
 
   return (
     <div className="space-y-4">
+      <BatchJobProgressModal jobId={progressJobId} onClose={() => setProgressJobId(null)} />
       <ExportWorksControls filters={exportFilters} selectedIds={selectedIds} />
 
       <details className="rounded-lg border border-stone-200 bg-white p-4">
@@ -115,35 +121,35 @@ export function WorksListClient({ exportFilters, works }: WorksListClientProps) 
         </div>
         </summary>
 
-        <div className="mt-4 rounded-md border border-stone-200 bg-stone-50 p-3">
+        <p className="mt-4 rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900">
+          真实搜索识别用于确认作品身份；OpenAI 文本生成用于生成新书名、简介和封面 Prompt。两者是不同外部能力，需要分别选择。
+        </p>
+
+        <div className="mt-3 rounded-md border border-stone-200 bg-stone-50 p-3">
+          <div className="text-sm font-medium text-stone-950">识别搜索方式</div>
+          <div className="mt-3 grid gap-2 md:grid-cols-2">
+            <ProviderOption
+              checked={identifyProviderMode === "mock"}
+              description="使用本地 Mock 搜索结果，不调用外部搜索 API。"
+              name="identifyProviderMode"
+              onChange={() => setIdentifyProviderMode("mock")}
+              title="Mock 本地识别"
+            />
+            <ProviderOption
+              checked={identifyProviderMode === "configured"}
+              description="调用服务端 SEARCH_PROVIDER 配置的真实搜索服务，可能产生费用。"
+              name="identifyProviderMode"
+              onChange={() => setIdentifyProviderMode("configured")}
+              title="真实搜索识别"
+            />
+          </div>
+        </div>
+
+        <div className="mt-3 rounded-md border border-stone-200 bg-stone-50 p-3">
           <div className="text-sm font-medium text-stone-950">书名简介生成方式</div>
           <div className="mt-3 grid gap-2 md:grid-cols-2">
-            <label className="flex cursor-pointer gap-2 rounded-md border border-stone-200 bg-white p-3 text-sm text-stone-700 hover:border-red-200">
-              <input
-                checked={titleIntroProvider === "mock"}
-                className="mt-1"
-                name="titleIntroProvider"
-                onChange={() => setTitleIntroProvider("mock")}
-                type="radio"
-              />
-              <span>
-                <span className="block font-medium text-stone-950">Mock 规则引擎</span>
-                <span className="mt-1 block text-stone-500">本地规则生成，不消耗 API 费用，适合快速测试。</span>
-              </span>
-            </label>
-            <label className="flex cursor-pointer gap-2 rounded-md border border-stone-200 bg-white p-3 text-sm text-stone-700 hover:border-red-200">
-              <input
-                checked={titleIntroProvider === "openai"}
-                className="mt-1"
-                name="titleIntroProvider"
-                onChange={() => setTitleIntroProvider("openai")}
-                type="radio"
-              />
-              <span>
-                <span className="block font-medium text-stone-950">OpenAI 文本生成</span>
-                <span className="mt-1 block text-stone-500">调用 OpenAI 或中转站生成，更自然，会产生 API 调用费用。</span>
-              </span>
-            </label>
+            <ProviderOption checked={titleIntroProvider === "mock"} description="本地规则生成，不消耗 API 费用，适合快速测试。" name="titleIntroProvider" onChange={() => setTitleIntroProvider("mock")} title="Mock 规则引擎" />
+            <ProviderOption checked={titleIntroProvider === "openai"} description="调用 OpenAI 或中转站生成，更自然，会产生 API 调用费用。" name="titleIntroProvider" onChange={() => setTitleIntroProvider("openai")} title="OpenAI 文本生成" />
           </div>
         </div>
 
@@ -236,4 +242,16 @@ function batchStepLabel(step: "identify" | "rating" | "title_intro" | "cover_eva
   };
 
   return labels[step];
+}
+
+function ProviderOption({ checked, description, name, onChange, title }: { checked: boolean; description: string; name: string; onChange: () => void; title: string }) {
+  return (
+    <label className="flex cursor-pointer gap-2 rounded-md border border-stone-200 bg-white p-3 text-sm text-stone-700 hover:border-red-200">
+      <input checked={checked} className="mt-1" name={name} onChange={onChange} type="radio" />
+      <span>
+        <span className="block font-medium text-stone-950">{title}</span>
+        <span className="mt-1 block text-stone-500">{description}</span>
+      </span>
+    </label>
+  );
 }

@@ -12,6 +12,7 @@ export type CreateBatchJobInput = {
   steps: BatchJobStep[];
   costRiskAccepted: boolean;
   note?: string | null;
+  identifyProviderMode?: "mock" | "configured";
   titleIntroProvider?: "mock" | "openai";
 };
 

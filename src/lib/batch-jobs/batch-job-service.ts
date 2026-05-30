@@ -1,7 +1,7 @@
 import type { BatchJob, BatchJobItem, Work } from "@prisma/client";
 import {
   applyCandidateRelevanceGate,
-  identifyWorkWithConfiguredProvider,
+  identifyWorkWithProviderMode,
   type CandidateWork,
   type FinalMatch,
   type SearchEvidence,
@@ -19,6 +19,11 @@ import { saveWorkRating } from "@/lib/rating/rating-repository";
 import type { RatingInput, RatingResult, RenameSuggestion, WorkRating } from "@/lib/rating/rating-types";
 import { prisma } from "@/server/db";
 import type { BatchJobStep, CreateBatchJobInput } from "@/lib/batch-jobs/batch-job-types";
+
+type BatchJobExecutionOptions = {
+  identifyProviderMode: "mock" | "configured";
+  titleIntroProvider: "mock" | "openai";
+};
 
 type WorkForBatch = Pick<
   Work,
@@ -63,7 +68,8 @@ export async function createBatchJob(input: CreateBatchJobInput) {
       costRiskAccepted: input.costRiskAccepted,
       note: input.note?.trim() || null,
       providerSummaryJson: JSON.stringify({
-        searchProvider: process.env.SEARCH_PROVIDER || "mock",
+        identifyProviderMode: input.identifyProviderMode || "mock",
+        configuredSearchProvider: process.env.SEARCH_PROVIDER || "mock",
         titleIntroProvider: input.titleIntroProvider || "mock",
       }),
       items: {
@@ -80,14 +86,25 @@ export async function createBatchJob(input: CreateBatchJobInput) {
     },
   });
 
-  await runBatchJob(job.id, {
-    titleIntroProvider: input.titleIntroProvider || "mock",
-  });
-
   return getBatchJobDetail(job.id);
 }
 
-export async function runBatchJob(jobId: string, options: { titleIntroProvider: "mock" | "openai" }) {
+export function startBatchJobInBackground(jobId: string, options: BatchJobExecutionOptions) {
+  void runBatchJob(jobId, options).catch(async (error) => {
+    const normalized = normalizeBatchError(error);
+
+    await prisma.batchJob.update({
+      where: { id: jobId },
+      data: {
+        status: "failed",
+        finishedAt: new Date(),
+        errorSummary: `${normalized.errorCode}: ${normalized.errorMessage}`,
+      },
+    }).catch(() => undefined);
+  });
+}
+
+export async function runBatchJob(jobId: string, options: BatchJobExecutionOptions) {
   await prisma.batchJob.update({
     where: { id: jobId },
     data: {
@@ -104,6 +121,7 @@ export async function runBatchJob(jobId: string, options: { titleIntroProvider: 
 
   for (const item of items) {
     await runBatchJobItem(item, options);
+    await summarizeBatchJob(jobId);
   }
 
   return summarizeBatchJob(jobId);
@@ -128,7 +146,7 @@ export async function retryBatchJobItem(jobId: string, itemId: string) {
     throw createBatchError("ITEM_NOT_FAILED", "只有失败的任务项可以重试。", "当前任务项不是 failed 状态。");
   }
 
-  const providerSummary = safeJsonParse<{ titleIntroProvider?: "mock" | "openai" }>(
+  const providerSummary = safeJsonParse<Partial<BatchJobExecutionOptions>>(
     item.batchJob.providerSummaryJson || "{}",
     {},
   );
@@ -145,13 +163,14 @@ export async function retryBatchJobItem(jobId: string, itemId: string) {
   });
 
   await runBatchJobItem(item, {
+    identifyProviderMode: providerSummary.identifyProviderMode || "mock",
     titleIntroProvider: providerSummary.titleIntroProvider || "mock",
   });
 
   return summarizeBatchJob(jobId);
 }
 
-async function runBatchJobItem(item: Pick<BatchJobItem, "id" | "workId" | "step">, options: { titleIntroProvider: "mock" | "openai" }) {
+async function runBatchJobItem(item: Pick<BatchJobItem, "id" | "workId" | "step">, options: BatchJobExecutionOptions) {
   await prisma.batchJobItem.update({
     where: { id: item.id },
     data: {
@@ -189,8 +208,8 @@ async function runBatchJobItem(item: Pick<BatchJobItem, "id" | "workId" | "step"
   }
 }
 
-async function runStep(workId: string, step: BatchJobStep, options: { titleIntroProvider: "mock" | "openai" }) {
-  if (step === "identify") return runIdentifyStep(workId);
+async function runStep(workId: string, step: BatchJobStep, options: BatchJobExecutionOptions) {
+  if (step === "identify") return runIdentifyStep(workId, options.identifyProviderMode);
   if (step === "rating") return runRatingStep(workId);
   if (step === "title_intro") return runTitleIntroStep(workId, options.titleIntroProvider);
   if (step === "cover_evaluation") return runCoverEvaluationStep(workId);
@@ -198,9 +217,9 @@ async function runStep(workId: string, step: BatchJobStep, options: { titleIntro
   throw createBatchError("UNSUPPORTED_STEP", "暂不支持该批量步骤。", `step=${String(step)}`);
 }
 
-async function runIdentifyStep(workId: string) {
+async function runIdentifyStep(workId: string, identifyProviderMode: "mock" | "configured") {
   const work = await getWorkForBatch(workId);
-  const result = await identifyWorkWithConfiguredProvider({
+  const result = await identifyWorkWithProviderMode({
     title: work.title,
     author: work.author,
     intro: work.description,
@@ -208,7 +227,7 @@ async function runIdentifyStep(workId: string) {
     coverFileName: work.coverFileName,
     remark: work.notes,
     externalId: work.externalId,
-  });
+  }, { searchProviderMode: identifyProviderMode });
 
   await prisma.workIdentification.create({
     data: {
@@ -229,6 +248,13 @@ async function runIdentifyStep(workId: string) {
 
   return {
     provider: result.searchProvider,
+    identifyProviderMode,
+    actualSearchProvider: result.searchProvider,
+    searchFallback: result.sourceSummary.searchFallback ?? false,
+    baseURLHost: result.sourceSummary.baseURLHost ?? null,
+    httpStatus: result.sourceSummary.httpStatus ?? null,
+    rawResultCount: result.sourceSummary.rawResultCount ?? result.searchResults.length,
+    normalizedResultCount: result.sourceSummary.normalizedResultCount ?? result.candidates.length,
     searchQuery: result.searchQuery,
     candidateCount: result.candidates.length,
     validEvidenceCount: result.evidence.length,
@@ -451,8 +477,8 @@ export async function getBatchJobDetail(jobId: string) {
   });
 }
 
-export function assertCostRiskAccepted(input: Pick<CreateBatchJobInput, "steps" | "costRiskAccepted" | "titleIntroProvider">) {
-  const usesRealSearch = (process.env.SEARCH_PROVIDER || "mock") === "real" && input.steps.includes("identify");
+export function assertCostRiskAccepted(input: Pick<CreateBatchJobInput, "steps" | "costRiskAccepted" | "identifyProviderMode" | "titleIntroProvider">) {
+  const usesRealSearch = input.identifyProviderMode === "configured" && input.steps.includes("identify");
   const usesOpenAIText = input.titleIntroProvider === "openai" && input.steps.includes("title_intro");
 
   if ((usesRealSearch || usesOpenAIText) && !input.costRiskAccepted) {

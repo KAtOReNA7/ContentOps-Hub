@@ -41,7 +41,7 @@ function buildSettings() {
 
   return [
     {
-      description: "默认 mock；real/custom 仅在单本作品识别时手动触发，不做批量搜索。",
+      description: "默认 mock；real/custom 仅在用户主动选择真实搜索识别并确认成本后触发。",
       key: "search-provider",
       label: "SEARCH_PROVIDER",
       tone: searchProvider === "mock" ? "stone" : "blue",
@@ -74,6 +74,34 @@ function buildSettings() {
       label: "SEARCH_MAX_RESULTS",
       tone: "stone",
       value: process.env.SEARCH_MAX_RESULTS || "10",
+    },
+    {
+      description: "单次识别最多执行的扩展 query 数。默认 1，避免触发搜索服务限流。",
+      key: "search-expanded-query-limit",
+      label: "SEARCH_EXPANDED_QUERY_LIMIT",
+      tone: "stone",
+      value: process.env.SEARCH_EXPANDED_QUERY_LIMIT || "1",
+    },
+    {
+      description: "多个扩展 query 之间的等待时间。",
+      key: "search-query-delay",
+      label: "SEARCH_QUERY_DELAY_MS",
+      tone: "stone",
+      value: process.env.SEARCH_QUERY_DELAY_MS || "800",
+    },
+    {
+      description: "HTTP 429 限流时最多退避重试次数。",
+      key: "search-429-retry-count",
+      label: "SEARCH_429_RETRY_COUNT",
+      tone: "stone",
+      value: process.env.SEARCH_429_RETRY_COUNT || "1",
+    },
+    {
+      description: "HTTP 429 重试前等待时间。",
+      key: "search-429-retry-delay",
+      label: "SEARCH_429_RETRY_DELAY_MS",
+      tone: "stone",
+      value: process.env.SEARCH_429_RETRY_DELAY_MS || "1500",
     },
     {
       description: "只判断是否存在，不展示任何前缀或后缀。",

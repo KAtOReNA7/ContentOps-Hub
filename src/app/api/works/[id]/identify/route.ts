@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { identifyWorkWithConfiguredProvider } from "@/lib/adapters/search-adapter";
+import { identifyWorkWithProviderMode, type SearchProviderMode } from "@/lib/adapters/search-adapter";
 import { prisma } from "@/server/db";
 
 export const runtime = "nodejs";
@@ -8,8 +8,22 @@ type IdentifyRouteProps = {
   params: Promise<{ id: string }>;
 };
 
-export async function POST(_request: Request, { params }: IdentifyRouteProps) {
+export async function POST(request: Request, { params }: IdentifyRouteProps) {
   try {
+    const body = await readOptionalJsonBody(request);
+    const searchProviderMode: SearchProviderMode = body.searchProviderMode === "configured" ? "configured" : "mock";
+
+    if (searchProviderMode === "configured" && body.costRiskAccepted !== true) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "请先确认真实搜索可能产生外部 API 费用。",
+          errors: ["选择真实搜索识别时，必须勾选成本确认。"],
+        },
+        { status: 400 },
+      );
+    }
+
     const { id } = await params;
     const work = await prisma.work.findUnique({
       where: { id },
@@ -36,7 +50,7 @@ export async function POST(_request: Request, { params }: IdentifyRouteProps) {
       );
     }
 
-    const result = await identifyWorkWithConfiguredProvider({
+    const result = await identifyWorkWithProviderMode({
       title: work.title,
       author: work.author,
       intro: work.description,
@@ -44,7 +58,7 @@ export async function POST(_request: Request, { params }: IdentifyRouteProps) {
       coverFileName: work.coverFileName,
       remark: work.notes,
       externalId: work.externalId,
-    });
+    }, { searchProviderMode });
     const saved = await prisma.workIdentification.create({
       data: {
         workId: id,
@@ -83,13 +97,29 @@ export async function POST(_request: Request, { params }: IdentifyRouteProps) {
       },
     });
   } catch (error) {
+    const message = error instanceof Error ? error.message : "未知错误";
     return NextResponse.json(
       {
         success: false,
         message: "作品识别失败",
-        errors: [error instanceof Error ? error.message : "未知错误"],
+        errors: [message],
       },
-      { status: 500 },
+      { status: message === "请求体 JSON 格式异常。" ? 400 : 500 },
     );
+  }
+}
+
+async function readOptionalJsonBody(request: Request): Promise<Record<string, unknown>> {
+  const text = await request.text();
+
+  if (!text.trim()) {
+    return {};
+  }
+
+  try {
+    const value = JSON.parse(text) as unknown;
+    return typeof value === "object" && value !== null && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
+  } catch {
+    throw new Error("请求体 JSON 格式异常。");
   }
 }

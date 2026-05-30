@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createBatchJob, toPublicBatchError } from "@/lib/batch-jobs/batch-job-service";
+import { createBatchJob, startBatchJobInBackground, toPublicBatchError } from "@/lib/batch-jobs/batch-job-service";
 import { isBatchJobStatus, isBatchJobStep, type BatchJobStep, type BatchJobType } from "@/lib/batch-jobs/batch-job-types";
 import { prisma } from "@/server/db";
 
@@ -51,6 +51,14 @@ export async function POST(request: Request) {
     }
 
     const job = await createBatchJob(parsed.value);
+    if (!job) {
+      return structuredError("批量任务创建失败。", ["未能读取新建任务。"], 500);
+    }
+
+    startBatchJobInBackground(job.id, {
+      identifyProviderMode: parsed.value.identifyProviderMode,
+      titleIntroProvider: parsed.value.titleIntroProvider,
+    });
 
     return NextResponse.json({
       success: true,
@@ -72,6 +80,7 @@ function parseCreateBody(body: unknown): {
     steps: BatchJobStep[];
     costRiskAccepted: boolean;
     note: string | null;
+    identifyProviderMode: "mock" | "configured";
     titleIntroProvider: "mock" | "openai";
   };
   errors: string[];
@@ -82,6 +91,7 @@ function parseCreateBody(body: unknown): {
   const steps = Array.isArray(value.steps) ? value.steps.filter(isBatchJobStep) : [];
   const rawProvider = value.titleIntroProvider || value.provider;
   const titleIntroProvider = rawProvider === "openai" ? "openai" : "mock";
+  const identifyProviderMode = value.identifyProviderMode === "configured" ? "configured" : "mock";
   const inferredType = steps.length === 1 ? steps[0] : "mixed";
 
   if (!Array.isArray(value.workIds)) errors.push("workIds 必须是数组。");
@@ -96,6 +106,7 @@ function parseCreateBody(body: unknown): {
       steps,
       costRiskAccepted: value.costRiskAccepted === true,
       note: typeof value.note === "string" ? value.note : null,
+      identifyProviderMode,
       titleIntroProvider,
     },
     errors,

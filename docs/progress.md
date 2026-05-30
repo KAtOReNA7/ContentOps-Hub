@@ -1387,3 +1387,31 @@ Prisma 同步：
 - 已更新 `docs/batch-jobs.md`，补充批量书名简介 provider 选择、成本确认边界和效果回流职责说明。
 - 当前 GitHub 远程仓库为 `https://github.com/KAtOReNA7/ContentOps-Hub.git`。
 - 本次仅修改项目说明文档，没有修改业务代码、数据库模型或环境变量。
+## 阶段 19.2：批量任务体验修复与真实搜索入口补全
+
+更新时间：2026-05-30
+
+- 批量任务创建接口调整为先保存任务和任务项、立即返回 batchJobId，再由当前 Node 进程异步顺序执行。
+- 作品列表创建批量任务后会打开进度弹窗，每 2 秒轮询任务详情，展示总数、完成数、成功数、失败数、跳过数和最近更新时间。
+- 单本作品识别新增 Mock 本地识别 / configured 真实搜索识别选择；configured 模式必须人工确认成本风险。
+- 批量任务明确区分 identifyProviderMode 和 titleIntroProvider：真实搜索只影响 identify，OpenAI 文本生成只影响 title_intro。
+- 识别结果新增实际来源、baseURL host、HTTP 状态、结果数量和 fallback 状态展示。
+- 真实搜索失败允许回退 Mock，但页面和任务摘要会明确标记 Mock fallback；SEARCH_PROVIDER=mock 时也会明确提示未调用真实搜索。
+- 本阶段没有修改 Prisma schema，没有新增依赖，没有增加 Redis、BullMQ、worker、SSE 或 WebSocket。
+- 当前后台执行仍是本地 MVP 方案：服务重启或 Node 进程退出会中断正在执行的任务，不提供自动恢复。
+### 阶段 19.2 检查结果
+
+- `npm exec -- prisma validate`：通过。
+- `npm exec -- prisma generate`：通过。
+- `npm run db:test`：通过，Work count 为 20。
+- `npm run typecheck`：通过。
+- `npm run lint`：通过。
+- `npm run build`：通过。
+- 本地页面烟雾检查：`/`、`/works`、`/analysis` 均返回 HTTP 200。
+### 阶段 19.2 百度千帆 HTTP 429 限流补丁
+
+- 手动测试发现真实搜索一次识别连续执行 4 个扩展 query，百度千帆返回 HTTP 429。
+- 默认扩展 query 数已调整为 1，避免单本识别默认产生突发请求。
+- 新增 SEARCH_EXPANDED_QUERY_LIMIT、SEARCH_QUERY_DELAY_MS、SEARCH_429_RETRY_COUNT、SEARCH_429_RETRY_DELAY_MS 配置。
+- 百度千帆 HTTP 429 默认退避重试 1 次；仍失败时明确提示限流或额度不足，并保留 Mock fallback。
+- 本补丁没有调用真实搜索 API，没有修改 Prisma schema，没有新增依赖。
