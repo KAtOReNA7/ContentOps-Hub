@@ -18,6 +18,7 @@ export type SearchWorkInput = {
   coverFileName: string | null;
   remark: string | null;
   externalId?: string | null;
+  contentType?: string | null;
 };
 
 type LegacySearchWorkInput = {
@@ -28,6 +29,7 @@ type LegacySearchWorkInput = {
   coverFileName: string | null;
   notes?: string | null;
   externalId?: string | null;
+  contentType?: string | null;
 };
 
 export type SearchResultItem = {
@@ -519,6 +521,7 @@ export function buildSearchQuery(work: SearchWorkInput): string {
     work.author || "",
     work.externalId ? `作品ID ${work.externalId}` : "",
     work.category || "",
+    work.contentType || "",
     "有声书 小说",
   ]
     .filter(Boolean)
@@ -661,6 +664,7 @@ function normalizeInput(input: SearchWorkInput | LegacySearchWorkInput): SearchW
     coverFileName: input.coverFileName?.trim() || null,
     remark: (remark || "").trim() || null,
     externalId: input.externalId?.trim() || null,
+    contentType: input.contentType?.trim() || "web_novel",
   };
 }
 
@@ -774,8 +778,8 @@ function scoreSearchResultCandidate(work: SearchWorkInput, result: SearchResultI
     authorEvidence.reason,
     `简介关键词重合 ${Math.round(keywordScore * 100)}%`,
     result.sourceCategory === "audio_platform" ? "有声书平台证据优先参考" : "",
-    result.ipEvidence.length ? `命中影视化 / IP 证据 ${result.ipEvidence.length} 条` : "",
-    result.heatEvidence.length ? `命中全网热度证据 ${result.heatEvidence.length} 条` : "",
+    result.ipEvidence.length ? `本地初筛发现可能的改编关键词 ${result.ipEvidence.length} 条，需由 OpenAI 结合原文确认` : "",
+    result.heatEvidence.length ? `本地初筛发现可能的热度关键词 ${result.heatEvidence.length} 条，需由 OpenAI 结合原文确认` : "",
     `相关性 ${relevance.score}/100`,
   ].filter(Boolean);
   const normalizedRiskHints = authorMatches
@@ -948,26 +952,7 @@ function buildEvidence(candidates: CandidateWork[]): SearchEvidence[] {
     url: candidate.url ?? null,
     weight: sourceTypeWeight(candidate.sourceCategory ?? candidate.sourceType ?? "unknown"),
   }));
-  const ipEvidence = candidates.flatMap((candidate) =>
-    (candidate.ipEvidence ?? []).map((item) => ({
-      title: "影视化 / IP 证据",
-      detail: `${item.sourceName}：${item.evidenceText}`,
-      sourceType: item.sourceCategory,
-      url: candidate.url ?? null,
-      weight: item.confidence === "high" ? 1 : item.confidence === "medium" ? 0.7 : 0.4,
-    })),
-  );
-  const heatEvidence = candidates.flatMap((candidate) =>
-    (candidate.heatEvidence ?? []).map((item) => ({
-      title: "全网热度证据",
-      detail: `${item.sourceName}：${item.evidenceText}`,
-      sourceType: item.sourceCategory,
-      url: candidate.url ?? null,
-      weight: item.strength === "high" ? 0.8 : item.strength === "medium" ? 0.55 : 0.3,
-    })),
-  );
-
-  return [...ipEvidence, ...heatEvidence, ...candidateEvidence].slice(0, 10);
+  return candidateEvidence;
 }
 
 function summarizeSources(candidates: CandidateWork[], filterSummary?: SearchFilterSummary): SourceSummary {
@@ -1430,6 +1415,15 @@ function platformMappingFromHost(
   host: string,
 ): { canonicalSourceName: string; sourceCategory: SearchSourceType } | null {
   const normalized = host.replace(/^www\./, "").toLowerCase();
+  if (normalized === "wenxue.iqiyi.com" || normalized.endsWith(".wenxue.iqiyi.com")) {
+    return { canonicalSourceName: "爱奇艺文学", sourceCategory: "ebook_platform" };
+  }
+  if (normalized === "ac.qq.com" || normalized.endsWith(".ac.qq.com")) {
+    return { canonicalSourceName: "腾讯动漫", sourceCategory: "ebook_platform" };
+  }
+  if (normalized === "music.163.com" || normalized.endsWith(".music.163.com")) {
+    return { canonicalSourceName: "网易云音乐", sourceCategory: "audio_platform" };
+  }
   const mappings: Array<[string, string, SearchSourceType]> = [
     ["jjwxc.net", "晋江文学城", "ebook_platform"],
     ["fanqienovel.com", "番茄小说", "ebook_platform"],
@@ -1498,17 +1492,15 @@ function extractIpEvidence(input: {
   url: string;
 }): IpEvidence[] {
   const text = `${input.title} ${input.snippet} ${input.sourceName} ${input.url}`;
-  const keywords = ["影视化", "改编", "影视原著", "原著小说", "电视剧", "网剧", "剧版", "芒果TV", "腾讯视频", "爱奇艺", "优酷", "播出", "主演", "官宣"];
+  const keywords = ["影视化", "影视改编", "改编为", "影视原著", "原著小说", "电视剧", "网剧", "剧版", "动画化", "漫画改编", "广播剧", "出版", "上线", "播出", "主演", "官宣"];
   const hits = keywords.filter((keyword) => text.includes(keyword));
 
-  if (input.sourceCategory !== "video_platform" && !hits.length) {
+  if (!hits.length) {
     return [];
   }
 
-  const confidence: SearchEvidenceStrength = input.sourceCategory === "video_platform" || hits.length >= 2 ? "high" : "medium";
-  const evidenceText = hits.length
-    ? `摘要中出现“${hits.slice(0, 4).join(" / ")}”`
-    : `结果来自${input.sourceName}，属于影视/IP 平台证据`;
+  const confidence: SearchEvidenceStrength = hits.length >= 2 ? "high" : "medium";
+  const evidenceText = `摘要中出现“${hits.slice(0, 4).join(" / ")}”，仅作为待核验初步信号`;
 
   return [
     {
@@ -1529,19 +1521,15 @@ function extractHeatEvidence(input: {
   url: string;
 }): HeatEvidence[] {
   const text = `${input.title} ${input.snippet} ${input.sourceName} ${input.url}`;
-  const keywords = ["热搜", "话题", "播放", "改编", "讨论", "评分", "百科", "豆瓣", "影视", "主演", "官宣"];
+  const keywords = ["热搜", "话题阅读", "讨论量", "播放量", "评分", "排名", "榜单", "点赞", "转发", "收藏", "粉丝", "订阅"];
   const hits = keywords.filter((keyword) => text.includes(keyword));
-  const heatCategories: SearchSourceType[] = ["social_media", "encyclopedia", "news", "video_platform"];
-
-  if (!heatCategories.includes(input.sourceCategory) && !hits.length) {
+  if (!hits.length) {
     return [];
   }
 
   const strength: SearchEvidenceStrength =
     input.sourceCategory === "social_media" || hits.length >= 3 ? "high" : hits.length >= 1 ? "medium" : "low";
-  const evidenceText = hits.length
-    ? `摘要中出现“${hits.slice(0, 4).join(" / ")}”`
-    : `结果来自${input.sourceName}，可作为热度辅助证据`;
+  const evidenceText = `摘要中出现“${hits.slice(0, 4).join(" / ")}”，仅作为待核验初步信号`;
 
   return [
     {

@@ -168,6 +168,10 @@ export function WorksListClient({ exportFilters, works }: WorksListClientProps) 
           <span>我确认本次批量任务可能调用外部 API 并产生费用。</span>
         </label>
 
+        <p className="mt-3 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+          批量评级固定使用 OpenAI 正式评级，不会回退到本地规则。已选 {selectedIds.length} 部，预计最多调用 {selectedIds.length} 次 OpenAI；单次最多 10 部作品。执行前必须勾选成本确认。
+        </p>
+
         <div className="mt-4 flex flex-wrap gap-2">
           {(["identify", "rating", "title_intro", "cover_evaluation"] as const).map((step) => (
             <button

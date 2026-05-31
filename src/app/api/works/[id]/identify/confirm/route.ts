@@ -72,7 +72,7 @@ export async function POST(request: Request, { params }: ConfirmRouteProps) {
 
     return NextResponse.json({
       success: true,
-      message: "人工确认完成",
+      message: "历史人工确认信息已保存。正式匹配与评级仍以作品基础信息为准。",
       data: {
         identificationId: identification.id,
         confirmed: identification.confirmed,

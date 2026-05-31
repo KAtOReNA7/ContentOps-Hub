@@ -58,6 +58,12 @@ export function NewWorkForm() {
         />
         <Field label="作者" name="author" placeholder="可选" />
         <Field label="分类" name="category" placeholder="如：都市、悬疑、言情" />
+        <label className="grid gap-2 text-sm">
+          <span className="font-medium text-stone-700">作品类型 <span className="text-red-700">*</span></span>
+          <select className="rounded-md border border-stone-300 px-3 py-2" defaultValue="web_novel" name="contentType" required>
+            <option value="web_novel">网文</option><option value="ebook">出版电子书</option><option value="audiobook">有声小说</option><option value="audio_drama">广播剧</option>
+          </select>
+        </label>
         <Field label="当前播放量" name="currentPlays" placeholder="非负整数，如 12000" />
         <Field label="当前点击率" name="currentCtr" placeholder="支持 0.12 或 12%" />
         <Field label="当前完播率" name="currentFinish" placeholder="支持 0.35 或 35%" />

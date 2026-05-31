@@ -47,7 +47,7 @@ export default async function WorksPage({ searchParams }: WorksPageProps) {
       author ? { author: { contains: author } } : {},
       category ? { category } : {},
       reviewStatus ? { reviewStatus } : {},
-      rating ? { ratings: { some: { rating } } } : {},
+      rating ? { ratings: { some: { rating, provider: "openai" } } } : {},
     ],
   } satisfies Prisma.WorkWhereInput;
   const [works, total, categories] = await Promise.all([
@@ -55,7 +55,7 @@ export default async function WorksPage({ searchParams }: WorksPageProps) {
       include: {
         coverAssets: { orderBy: { createdAt: "desc" }, take: 1 },
         coverEvaluations: { orderBy: { createdAt: "desc" }, take: 1 },
-        ratings: { orderBy: { createdAt: "desc" }, take: 1 },
+        ratings: { where: { provider: "openai" }, orderBy: { createdAt: "desc" }, take: 1 },
       },
       orderBy: { createdAt: "desc" },
       skip: (page - 1) * pageSize,

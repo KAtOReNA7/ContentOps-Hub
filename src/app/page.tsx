@@ -12,7 +12,7 @@ export default async function DashboardPage() {
   const [totalWorks, identifiedWorks, ratedWorks, generatedWorks, reviewedWorks, pendingReview, experimentResultWorks, experimentReviewWorks, adoptExperimentReviews, continueExperimentReviews, rollbackExperimentReviews, insufficientExperimentReviews, feedbackInsightWorks, accurateFeedbackInsights, inconclusiveFeedbackInsights, ratingGroups, strategyGroups, reviewGroups] = await Promise.all([
     prisma.work.count(),
     prisma.work.count({ where: { identifications: { some: {} } } }),
-    prisma.work.count({ where: { ratings: { some: {} } } }),
+    prisma.work.count({ where: { ratings: { some: { provider: "openai" } } } }),
     prisma.work.count({ where: { titleIntroGenerations: { some: {} } } }),
     prisma.work.count({ where: { reviewStatus: { not: "pending_review" } } }),
     prisma.work.count({ where: { reviewStatus: "pending_review" } }),

@@ -16,6 +16,7 @@ model Work {
   coverUrl       String?
   coverFileName  String?
   category       String?
+  contentType    String           @default("web_novel")
   currentPlays   Int?
   currentCtr     Float?
   currentFinish  Float?
@@ -36,6 +37,8 @@ model Work {
   analyses        AnalysisResult[]
   identifications WorkIdentification[]
   ratings         WorkRating[]
+  ratingRuns      WorkRatingRun[]
+  ratingSupplements WorkRatingSupplement[]
   titleIntroGenerations WorkTitleIntroGeneration[]
   coverAssets     CoverAsset[]
   coverEvaluations WorkCoverEvaluation[]
@@ -81,6 +84,7 @@ model WorkIdentification {
 
   work Work @relation(fields: [workId], references: [id], onDelete: Cascade)
   ratings WorkRating[]
+  ratingRuns WorkRatingRun[]
   titleIntroGenerations WorkTitleIntroGeneration[]
 
   @@index([workId])
@@ -98,6 +102,8 @@ model WorkRating {
   evidenceJson     String
   renameSuggestion String
   renameReason     String
+  provider         String   @default("rules")
+  ratingRunId      String?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
@@ -107,6 +113,8 @@ model WorkRating {
 
   @@index([workId])
   @@index([identificationId])
+  @@index([provider])
+  @@index([ratingRunId])
 }
 
 model WorkTitleIntroGeneration {
@@ -205,6 +213,57 @@ model WorkCoverRender {
   @@index([workId])
   @@index([coverAssetId])
   @@index([titleIntroGenerationId])
+}
+
+model WorkRatingRun {
+  id                    String   @id @default(cuid())
+  workId                String
+  identificationId      String?
+  provider              String   @default("openai")
+  rating                String?
+  score                 Float?
+  confidence            Float?
+  renameSuggestion      String?
+  reasonJson            String   @default("{}")
+  risksJson             String   @default("[]")
+  evidenceJson          String   @default("[]")
+  evidenceWeightingJson String   @default("[]")
+  inputSnapshotJson     String   @default("{}")
+  promptVersion         String
+  model                 String
+  baseURLHost           String?
+  status                String   @default("pending")
+  errorMessage          String?
+  rawResponseJson       String?
+  adopted               Boolean  @default(false)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  work           Work                @relation(fields: [workId], references: [id], onDelete: Cascade)
+  identification WorkIdentification? @relation(fields: [identificationId], references: [id], onDelete: SetNull)
+
+  @@index([workId])
+  @@index([identificationId])
+  @@index([status])
+  @@index([adopted])
+}
+
+model WorkRatingSupplement {
+  id               String   @id @default(cuid())
+  workId           String
+  sourceType       String
+  title            String
+  content          String
+  evidenceUrl      String?
+  evidencePlatform String?
+  importance       String
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  work Work @relation(fields: [workId], references: [id], onDelete: Cascade)
+
+  @@index([workId])
+  @@index([importance])
 }
 
 model BatchJob {

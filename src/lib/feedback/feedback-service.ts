@@ -20,7 +20,7 @@ export async function generateFeedbackInsightForReview(reviewId: string) {
       winnerResult: true,
       work: {
         include: {
-          ratings: { orderBy: { createdAt: "desc" }, take: 1 },
+          ratings: { where: { provider: "openai" }, orderBy: { createdAt: "desc" }, take: 1 },
           coverEvaluations: { orderBy: { createdAt: "desc" }, take: 1 },
         },
       },

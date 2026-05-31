@@ -1,3 +1,7 @@
+/**
+ * LEGACY RULES ONLY：不得用于阶段 21.2 之后的正式作品价值评级。
+ * 仅保留为历史兼容、离线诊断和规则样例，不得写入正式运营评级。
+ */
 import type { RatingInput, RatingResult, RenameSuggestion, WorkRating } from "@/lib/rating/rating-types";
 
 const strongEmotionWords = ["离婚", "复仇", "求复合", "逆袭", "翻身", "打脸", "追妻", "崛起", "归来", "不忍了"];

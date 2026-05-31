@@ -23,6 +23,7 @@
 - 书名：`书名`、`原书名`、`作品名`、`标题`、`title`
 - 作者：`作者`、`作者名`、`author`
 - 分类：`分类`、`品类`、`题材`、`category`
+- 作品类型：`作品类型`、`内容类型`、`contentType`、`content_type`。可填写 `web_novel`、`ebook`、`audiobook`、`audio_drama`；未填写时默认 `web_novel`。
 - 简介：`简介`、`原简介`、`内容简介`、`intro`、`description`
 - 备注：`备注`、`运营备注`、`notes`、`remark`
 - 封面：`封面`、`封面文件`、`封面地址`、`封面URL`、`封面链接`、`封面文件名`、`cover`、`coverUrl`、`cover_url`、`coverFileName`

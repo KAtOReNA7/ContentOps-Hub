@@ -154,7 +154,7 @@ export function WorkIdentificationPanel({
         <div>
           <h2 className="font-semibold text-stone-950">作品识别与搜索证据</h2>
           <p className="mt-1 text-sm text-stone-600">
-            状态：{identification ? (identification.confirmed ? "已人工确认" : "已识别，待确认") : "未识别"}
+            状态：{identification ? "已识别" : "未识别"}
           </p>
         </div>
         <button
@@ -208,7 +208,7 @@ export function WorkIdentificationPanel({
             </p>
           ) : null}
           <div className="rounded-md bg-red-50 p-4">
-            <p className="text-sm text-red-700">最终匹配结果</p>
+            <p className="text-sm text-red-700">搜索匹配建议</p>
             <h3 className="mt-2 font-semibold text-stone-950">
               {identification.finalMatch?.title || "-"} / {identification.finalMatch?.author || "-"}
             </h3>
@@ -240,7 +240,8 @@ export function WorkIdentificationPanel({
           {identification.sourceSummary ? <SourceSummaryPanel summary={identification.sourceSummary} /> : null}
 
           <div className="rounded-md border border-stone-200 p-4">
-            <p className="font-medium text-stone-950">为什么是这本</p>
+            <p className="font-medium text-stone-950">搜索相关性证据</p>
+            <p className="mt-1 text-xs text-stone-500">这里只展示本地预处理后的搜索证据。正式 IP、影视、社媒热度和作者影响力判断由 OpenAI 基于原始证据完成。</p>
             {identification.evidence.length ? (
               <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-stone-700">
                 {identification.evidence.map((item, index) => (
@@ -263,18 +264,19 @@ export function WorkIdentificationPanel({
           </div>
 
           <div className="rounded-md border border-stone-200 p-4">
-            <p className="font-medium text-stone-950">人工确认</p>
+            <p className="font-medium text-stone-950">历史人工确认信息（兼容能力，可选）</p>
+            <p className="mt-1 text-xs text-stone-500">正式搜索匹配和评级始终使用作品基础信息中的书名与作者。需要修正书名或作者时，请编辑作品基础信息，不要依赖这里覆盖。</p>
             <div className="mt-3 grid gap-3 md:grid-cols-[1fr_1fr_auto]">
               <input
                 className="rounded-md border border-stone-300 px-3 py-2 text-sm"
                 onChange={(event) => setConfirmedTitle(event.target.value)}
-                placeholder="确认作品名"
+                placeholder="历史确认作品名"
                 value={confirmedTitle}
               />
               <input
                 className="rounded-md border border-stone-300 px-3 py-2 text-sm"
                 onChange={(event) => setConfirmedAuthor(event.target.value)}
-                placeholder="确认作者"
+                placeholder="历史确认作者"
                 value={confirmedAuthor}
               />
               <button
@@ -283,12 +285,12 @@ export function WorkIdentificationPanel({
                 onClick={confirmIdentification}
                 type="button"
               >
-                {isConfirming ? "确认中" : "人工确认"}
+                {isConfirming ? "保存中" : "保存历史确认信息"}
               </button>
             </div>
             {identification.confirmed ? (
               <p className="mt-3 text-sm text-green-700">
-                已人工确认：{identification.confirmedTitle || "-"} / {identification.confirmedAuthor || "-"}
+                已保存历史确认信息：{identification.confirmedTitle || "-"} / {identification.confirmedAuthor || "-"}
               </p>
             ) : null}
           </div>
@@ -309,7 +311,7 @@ export function WorkIdentificationPanel({
                         <span className="max-w-xl truncate font-medium text-stone-950">{candidate.title}</span>
                         <span className="text-stone-500">作者：{candidate.author}</span>
                         <span className="text-stone-500">匹配 {candidate.relevanceScore ?? candidate.score}</span>
-                        <span className="text-stone-500">价值信号 {candidate.valueSignalScore ?? 0}</span>
+                        <span className="text-stone-500">初步信号 {candidate.valueSignalScore ?? 0}</span>
                         {candidateTags(candidate).map((tag) => (
                           <span className={`rounded px-2 py-1 text-xs ${candidateTagClass(tag)}`} key={tag}>
                             {tag}
@@ -326,7 +328,7 @@ export function WorkIdentificationPanel({
                       <p>canonicalSourceName：{candidate.canonicalSourceName ?? candidate.sourceName ?? candidate.platform}</p>
                       <p>rawRank：{candidate.rawRank ?? "-"}</p>
                       <p>relevanceScore：{candidate.relevanceScore ?? "-"}</p>
-                      <p>valueSignalScore：{candidate.valueSignalScore ?? "-"}</p>
+                      <p>preliminary valueSignalScore：{candidate.valueSignalScore ?? "-"}（仅诊断，不直接参与正式评级）</p>
                       <p>
                         URL：
                         {candidate.url ? (
@@ -343,7 +345,7 @@ export function WorkIdentificationPanel({
                         排除理由：{candidate.excludeReasons.length ? candidate.excludeReasons.join("；") : "暂无明显排除理由"}
                       </p>
                       <p className="md:col-span-2">
-                        IP/热度证据：
+                        待核验初步信号：
                         {[...(candidate.ipEvidence ?? []).map((item) => item.evidenceText), ...(candidate.heatEvidence ?? []).map((item) => item.evidenceText)].join("；") || "-"}
                       </p>
                     </div>
@@ -371,8 +373,7 @@ function candidateTagClass(tag: string) {
   if (/书名命中|作者命中/.test(tag)) return "bg-green-50 text-green-700";
   if (/简介命中/.test(tag)) return "bg-blue-50 text-blue-700";
   if (/原作平台/.test(tag)) return "bg-purple-50 text-purple-700";
-  if (/影视|IP/.test(tag)) return "bg-orange-50 text-orange-700";
-  if (/社媒|热度/.test(tag)) return "bg-pink-50 text-pink-700";
+  if (/待核验/.test(tag)) return "bg-amber-50 text-amber-700";
   if (/风险|重名/.test(tag)) return "bg-red-50 text-red-700";
   return "bg-stone-100 text-stone-700";
 }
@@ -412,8 +413,8 @@ function candidateTags(candidate: CandidateWork): string[] {
   }
   if (candidate.sourceCategory === "ebook_platform") tags.add("原作平台");
   if (candidate.sourceCategory === "audio_platform") tags.add("有声书");
-  if (candidate.ipEvidence?.length) tags.add("影视/IP");
-  if (candidate.heatEvidence?.length) tags.add("社媒热度");
+  if (candidate.ipEvidence?.length) tags.add("待核验改编信号");
+  if (candidate.heatEvidence?.length) tags.add("待核验热度信号");
 
   return Array.from(tags).slice(0, 5);
 }
@@ -422,8 +423,8 @@ function SourceSummaryPanel({ summary }: { summary: SourceSummary }) {
   const categories = [
     { key: "audio_platform", label: "有声书" },
     { key: "ebook_platform", label: "电子书" },
-    { key: "video_platform", label: "影视/IP" },
-    { key: "social_media", label: "社媒热度" },
+    { key: "video_platform", label: "影视内容平台" },
+    { key: "social_media", label: "社媒平台" },
     { key: "encyclopedia", label: "百科" },
     { key: "news", label: "新闻" },
     { key: "search_engine", label: "搜索引擎" },
@@ -460,9 +461,12 @@ function SourceSummaryPanel({ summary }: { summary: SourceSummary }) {
       ) : null}
       {summary.ipEvidenceCount || summary.heatEvidenceCount ? (
         <p className="mt-3 text-sm text-red-700">
-          IP 证据 {summary.ipEvidenceCount ?? 0} 条 / 热度证据 {summary.heatEvidenceCount ?? 0} 条
+          待核验改编关键词 {summary.ipEvidenceCount ?? 0} 条 / 待核验热度关键词 {summary.heatEvidenceCount ?? 0} 条。平台名称和集团关系不代表已确认 IP 改编。
         </p>
       ) : null}
+      <p className="mt-3 rounded-md bg-blue-50 p-3 text-xs text-blue-800">
+        来源平台分类和关键词命中仅用于诊断。文学平台证据不代表影视/IP 改编；正式语义判断由 OpenAI 根据原始标题、摘要和链接完成。
+      </p>
     </div>
   );
 }

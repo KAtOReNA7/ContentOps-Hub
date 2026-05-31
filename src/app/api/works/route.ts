@@ -3,6 +3,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { NextResponse } from "next/server";
 import { prisma } from "@/server/db";
+import { normalizeContentType } from "@/lib/evidence/source-taxonomy";
 
 export const runtime = "nodejs";
 
@@ -27,6 +28,7 @@ export async function POST(request: Request) {
       data: {
         author: parsed.author,
         category: parsed.category,
+        contentType: parsed.contentType,
         coverFileName: parsed.coverUrl ? originalNameFromUrl(parsed.coverUrl) : null,
         coverUrl: parsed.coverUrl,
         currentCtr: parsed.currentCtr,
@@ -76,6 +78,7 @@ function parseWorkForm(formData: FormData) {
   const title = stringField(formData, "title");
   const author = optionalStringField(formData, "author");
   const category = optionalStringField(formData, "category");
+  const contentType = normalizeContentType(stringField(formData, "contentType"));
   const description = optionalStringField(formData, "description") ?? "";
   const externalId = optionalStringField(formData, "externalId");
   const notes = optionalStringField(formData, "notes");
@@ -96,6 +99,7 @@ function parseWorkForm(formData: FormData) {
   return {
     author,
     category,
+    contentType,
     coverUrl,
     currentCtr,
     currentFinish,

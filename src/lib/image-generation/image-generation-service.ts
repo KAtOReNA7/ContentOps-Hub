@@ -41,6 +41,7 @@ export async function redrawCoverWithChatGPTImage2(params: RedrawCoverParams): P
         take: 1,
       },
       ratings: {
+        where: { provider: "openai" },
         orderBy: { createdAt: "desc" },
         take: 1,
       },

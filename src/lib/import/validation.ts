@@ -1,4 +1,5 @@
 import { allImportColumnAliases, importColumnAliases } from "@/lib/import/columns";
+import { normalizeContentType, type WorkContentType } from "@/lib/evidence/source-taxonomy";
 
 export type RawImportRow = Record<string, unknown>;
 
@@ -10,6 +11,7 @@ export type NormalizedImportRow = {
   description: string;
   coverFileName: string;
   category: string;
+  contentType: WorkContentType;
   currentPlays: number | null;
   currentCtr: number | null;
   currentFinish: number | null;
@@ -76,6 +78,7 @@ export function normalizeImportRow(raw: RawImportRow, index = 0): NormalizedImpo
     description: cellByAliases(raw, importColumnAliases.description),
     coverFileName: cellByAliases(raw, importColumnAliases.coverFileName),
     category: cellByAliases(raw, importColumnAliases.category),
+    contentType: normalizeContentType(cellByAliases(raw, importColumnAliases.contentType)),
     currentPlays: parseInteger(cellByAliases(raw, importColumnAliases.currentPlays)),
     currentCtr: parseRate(cellByAliases(raw, importColumnAliases.currentCtr)),
     currentFinish: parseRate(cellByAliases(raw, importColumnAliases.currentFinish)),

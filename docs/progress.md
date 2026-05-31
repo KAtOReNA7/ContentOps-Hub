@@ -1503,3 +1503,94 @@ Prisma 同步：
 - `npm run build`：通过。
 - 本地 HTTP 冒烟检查：`/`、`/import`、`/works`、`/analysis`、`/experiments/import`、`/settings` 和单作品详情页均返回 HTTP 200。
 - 本阶段没有运行 `db:push`，因为 Prisma schema 没有修改。
+
+## 阶段 21.2：OpenAI 全量作品价值评级改造
+
+更新时间：2026-05-31
+
+- 默认作品价值评级已从本地 rules 改为 OpenAI 全量评级。
+- rules 已降级为辅助校验、证据整理和历史兼容逻辑，不再生成新的正式 SABCD 评级。
+- 新增 `WorkRatingRun`，保存 OpenAI 评级历史、状态、模型、prompt 版本、输入快照和失败摘要。
+- 新增 `WorkRatingSupplement`，支持人工补充平台、IP、榜单、作者和运营证据。
+- 新增单本评级运行、重跑、历史查询、人工采用、补充证据新增和删除 API。
+- OpenAI 评级失败不会静默回退 rules，也不会覆盖当前采用评级。
+- 批量评级固定使用 OpenAI，必须确认成本，单次最多 10 部作品；已有成功评级默认跳过。
+- Prisma validate / generate / db:push / db:test 已通过。
+- 本阶段未提交 `.env`、`.env.local`、uploads 或本地 SQLite 数据库。
+- `npm run typecheck`：通过。
+- `npm run lint`：通过。
+- `npm run build`：通过。
+- `npm run db:test-rating-openai`：通过，已验证运行历史、采用投影和补充证据数据库契约。
+- 单作品真实 OpenAI 评级：通过，结果保存为待采用建议，未覆盖当前采用评级。
+- `WorkRating` 兼容投影新增 `provider` 和 `ratingRunId`：旧行默认标记 `rules`，正式展示与后续生成只读取人工采用后的 `openai` 投影。
+- 二次安全同步 `npm exec -- prisma validate`、`npm exec -- prisma generate`、`npm run db:push`、`npm run db:test`：通过。
+
+## 阶段 21.2.1：OpenAI 作品价值评级证据体系修正
+
+更新时间：2026-05-31
+
+- Work 新增 `contentType`，支持 `web_novel`、`ebook`、`audiobook`、`audio_drama`。
+- 新建作品必须选择作品类型；详情页支持修改作品类型；导入映射和 Excel 导出已包含作品类型。
+- 新增来源分级 taxonomy：Tier 1 首发官方、Tier 2 三方阅读、Tier 3 音频、Tier 4 社媒/IP、Tier 5 普通网页、Tier 0 盗版采集过滤。
+- OpenAI 正式评级仅使用规范化 `selectedEvidence`，同站点仅保留一条，盗版和采集站不进入模型评级输入。
+- 封面评分只作为独立优化建议，不得拉低作品价值评级。
+- 缺少音频播放、评论、订阅、付费和榜单数据只进入 `missingEvidence`，不默认扣分。
+- 人工确认作者作为最高优先级作者信息，外部作者差异只用于重名排除和数据质量提示。
+- OpenAI 输出违反边界规则时保存为 failed，不覆盖当前采用评级，不回退 rules。
+- 阶段 21.2.1 本地 API 验证：新建作品可选择 `audiobook`，详情编辑可改为 `audio_drama`，Mock 识别正常。
+- 单作品 OpenAI 评级建议验证：通过；快照包含 `contentType=audio_drama`、规范化 selectedEvidence、missingEvidence 和 sourceDiagnostics，且 `adopted=false`。
+- 临时测试作品已删除，临时验证服务已关闭。
+- promptVersion 已升级为 `rating-openai-v2`。
+- `npm exec -- prisma validate`、`npm exec -- prisma generate`、`npm run db:push`、`npm run db:test`、`npm run db:test-rating-openai`、`npm run typecheck`、`npm run lint`、`npm run build`：通过。
+
+- npm run test:rating-evidence：通过。已覆盖官方来源优先、同源去重、盗版来源排除、普通来源保留和爱奇艺文学归类。
+- npm run typecheck / npm run lint / npm run build / npm run db:test：通过。
+
+## 阶段 21.3B：作品基础信息权威源与 OpenAI 评级证据边界修正
+
+更新时间：2026-05-31
+
+- 保留阶段 21.2 的 OpenAI 正式评级运行记录、采用流程和补充证据能力，没有推倒重建评级系统。
+- `Work.title` / `Work.author` 已成为搜索匹配和 OpenAI 评级的权威基准。
+- `confirmedTitle` / `confirmedAuthor` 降级为 legacy 历史兼容字段，不再覆盖作品基础信息，也不再作为评级前置条件。
+- 外部搜索作者不一致只影响候选搜索结果的 matched / uncertain / rejected 判断，不得降低作品价值评级。
+- 本地 evidence gate 继续保留标准化、域名归一、来源分级、同站点去重、盗版过滤、相关性初筛、数量截断和诊断能力。
+- 本地 `ipEvidence`、`heatEvidence`、`valueSignalScore` 已降级为 `preliminarySignals` 或诊断字段，不作为正式 accepted evidence。
+- 识别页面已将本地 IP / 热度展示改为“待核验初步信号”，并明确文学平台证据不代表影视/IP 改编。
+- OpenAI Prompt 已升级为 `rating-openai-v3`，明确禁止平台名和集团关系误判。
+- invalid 校验已增加：无明确原始证据却声明 IP / 社媒热度 / 作者影响力、外部作者差异扣分、任意证据缺失默认扣分、封面低分扣分、Tier 0 来源、已过滤结果引用和低可信网页主导等规则。
+- invalid 运行记录保存为 `status=invalid`，不会覆盖当前采用评级，也不会 fallback 到 rules。
+- 批量评级仍调用 OpenAI 评级运行记录，保留成本确认和单条失败隔离；批量摘要补充 provider、model、status 和错误信息。
+- `npm run typecheck`：通过。
+- `npm run test:rating-evidence`：通过。
+- `npm run db:test`：通过。
+- `npm run db:test-rating-openai`：通过。
+- `npm run lint`：通过。
+- `npm run build`：通过。
+
+## 阶段 21.3C：OpenAI invalid 运营提示与 legacy rules 标记
+
+更新时间：2026-05-31
+
+- OpenAI rating run 为 `invalid` 或 `failed` 时，API 和作品详情页会展示运营可读中文提示。
+- invalid 提示明确说明：当前已采用评级不会被覆盖；可以重新生成评级；也可以补充人工证据后重新评级。
+- invalid / failed 不会 fallback 到旧 rules，也不会覆盖当前 `WorkRating`。
+- 新增 invalid 原因映射，覆盖平台集团关系误判、缺失音频数据扣分、封面评分扣分、外部作者差异扣分、Tier 0 来源和已过滤证据引用。
+- 旧 rules 评级已标记为 `legacy_rules / 历史规则评级`，只用于历史兼容、规则样例和诊断，不作为阶段 21.2 后的正式运营评级。
+- 批量 rating step 继续调用 OpenAI rating run，不会调用 legacy rules。
+- Excel 导出中的旧规则评级来源会标记为 `legacy_rules / 历史规则评级`。
+- 本阶段只局部更新 UTF-8 文档内容，没有执行历史文档全量编码清理。
+
+## 阶段 21.3C 补充：OpenAI 搜索结果理解与评级证据分区
+
+更新时间：2026-05-31
+
+- 复用现有 `WorkRatingRun` / `WorkRatingSupplement`，没有新增重复评级模型，也没有修改 Prisma schema。
+- 真实搜索结果经过本地标准化、域名归一、来源分级、同站点去重、盗版过滤、数量截断和初步诊断后进入 OpenAI。
+- 本地 `preliminarySignals` 仅为待核验诊断，不代表正式 IP、影视化、热度、平台价值或作者影响力结论。
+- OpenAI 输出已扩展为 `searchResultAnalysis`、`acceptedEvidence`、`uncertainEvidence`、`rejectedEvidence`、`missingEvidence`、`evidenceTags` 和 `ratingResult`。
+- `evidenceTags=true` 必须能追溯到 `acceptedEvidence`；rejected / uncertain 证据不得作为核心评级依据。
+- 缺失证据默认 `shouldPenalize=false`；封面评分和外部搜索作者差异不得降低作品价值评分。
+- 平台名称和集团关系不得推断 IP 改编：爱奇艺文学不等于爱奇艺影视，腾讯动漫不等于腾讯视频，网易云音乐不等于门户新闻热度。
+- 完整 OpenAI 分区输出保存于 `WorkRatingRun.rawResponseJson`；普通页面只展示证据数量、标签摘要和运营可读错误。
+- 批量 rating step 继续使用 OpenAI rating run，单条失败隔离，不 fallback 到 legacy rules。

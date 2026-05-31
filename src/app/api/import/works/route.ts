@@ -62,6 +62,7 @@ export async function POST(request: Request) {
           coverUrl: remoteCoverUrl || null,
           coverFileName: remoteCoverOriginalName || row.coverFileName || null,
           category: row.category || null,
+          contentType: row.contentType,
           currentPlays: row.currentPlays,
           currentCtr: row.currentCtr,
           currentFinish: row.currentFinish,

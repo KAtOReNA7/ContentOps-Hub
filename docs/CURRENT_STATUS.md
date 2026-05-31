@@ -4,7 +4,20 @@
 
 ## 当前阶段
 
-阶段 21.1 已完成：Image2 概念图对齐精修已落地，核心页面进一步收敛为企业级内容运营工作台。
+阶段 21.3B 已完成：作品基础信息已成为搜索匹配与 OpenAI 评级权威源，本地证据 Gate 已收敛为预处理和诊断边界。
+
+## 阶段 21.3B：作品基础信息权威源与评级证据边界
+
+- 导入表格或手动新增时录入的 `Work.title` / `Work.author` 已明确为搜索匹配和 OpenAI 评级权威源。
+- `confirmedTitle` / `confirmedAuthor` 已降级为历史兼容信息，不再覆盖作品基础信息，也不是评级前置条件。
+- 本地 evidence gate 只做标准化、来源分级、去重、盗版过滤、相关性初筛和诊断。
+- 本地 `ipEvidence`、`heatEvidence`、`valueSignalScore` 仅作为待核验初步信号，不作为正式 IP 或热度事实。
+- OpenAI Prompt 已明确禁止根据平台名或集团关系推断 IP 改编、影视化、社媒热度或作者影响力。
+- OpenAI invalid 校验已覆盖平台误判、缺失证据扣分、外部作者差异扣分、封面低分扣分、Tier 0 来源和已过滤证据引用。
+- 阶段 21.3C 已补强 OpenAI `invalid` / `failed` 运营提示：页面使用中文说明未采用原因，并明确当前评级不会被覆盖。
+- 旧规则评级已标记为 `legacy_rules / 历史规则评级`，仅保留历史兼容和诊断用途，不参与阶段 21.2 之后的正式评级。
+- 阶段 21.3C 已将搜索结果语义理解交给 OpenAI：输出逐条分析、accepted / uncertain / rejected evidence、missing evidence 和可追溯 evidence tags。
+- 本地 evidence gate 只做机械预处理和初步诊断，`preliminarySignals` 不代表正式 IP、热度或作者影响力结论。
 
 当前仓库：
 
@@ -24,7 +37,7 @@ https://github.com/KAtOReNA7/ContentOps-Hub.git
 - 手动新增单本作品，支持业务作品 ID、封面 URL 和本地封面上传
 - 作品列表、筛选、分页、批量勾选和作品详情页
 - Mock-first 作品识别、搜索证据保存、相关性准入门槛和人工确认
-- SABCD 作品价值评级，识别置信度与价值评分分开处理
+- OpenAI SABCD 作品价值评级，支持历史记录、失败留痕、人工采用和补充证据
 - Mock / OpenAI 书名简介文本生成，OpenAI 仅用户主动选择时调用
 - 封面上传、导入封面 URL、预览、Mock 评估和策略人工确认
 - 原图换标题 / 版式优化，输出 1:1 和 3:4 封面
@@ -33,6 +46,7 @@ https://github.com/KAtOReNA7/ContentOps-Hub.git
 - 单本、全部、筛选、勾选 Excel 导出
 - Excel + 已有最终封面 ZIP 交付包
 - 批量任务中心 V1：识别、评级、书名简介生成、封面评估
+- 批量评级固定使用 OpenAI，必须人工确认成本，单次最多 10 部，已有成功评级默认跳过
 - 多书名测试结果导入和运营复盘
 - 效果回流洞察和评分校准
 - 首页运营看板、详情页处理摘要、紧凑列表、状态标签和设置页运营视图
@@ -73,6 +87,7 @@ https://github.com/KAtOReNA7/ContentOps-Hub.git
 ## 禁止事项
 
 - 不要默认批量调用 OpenAI
+- 不允许 OpenAI 评级失败后静默回退 rules
 - 不要默认批量生成图片
 - 不要提交 `.env` / `.env.local`
 - 不要把 API key 写入代码或前端

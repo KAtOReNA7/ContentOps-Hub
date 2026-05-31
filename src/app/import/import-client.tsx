@@ -313,6 +313,7 @@ export function ImportClient() {
                     <td className="px-4 py-3 font-medium text-stone-950">{row.title || "-"}</td>
                     <td className="px-4 py-3">{row.author || "-"}</td>
                     <td className="px-4 py-3">{row.category || "-"}</td>
+                    <td className="px-4 py-3">{row.contentType}</td>
                     <td className="max-w-xs px-4 py-3">{row.description || "-"}</td>
                     <td className="max-w-xs px-4 py-3">{row.notes || "-"}</td>
                     <td className="max-w-xs px-4 py-3">{row.coverFileName || "-"}</td>

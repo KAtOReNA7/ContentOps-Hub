@@ -34,6 +34,7 @@ export async function POST(request: Request, { params }: IdentifyRouteProps) {
         description: true,
         coverFileName: true,
         category: true,
+        contentType: true,
         externalId: true,
         notes: true,
       },
@@ -58,6 +59,7 @@ export async function POST(request: Request, { params }: IdentifyRouteProps) {
       coverFileName: work.coverFileName,
       remark: work.notes,
       externalId: work.externalId,
+      contentType: work.contentType,
     }, { searchProviderMode });
     const saved = await prisma.workIdentification.create({
       data: {

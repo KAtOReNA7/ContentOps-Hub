@@ -1,11 +1,8 @@
 import type { BatchJob, BatchJobItem, Work } from "@prisma/client";
 import {
-  applyCandidateRelevanceGate,
   identifyWorkWithProviderMode,
   type CandidateWork,
   type FinalMatch,
-  type SearchEvidence,
-  type SourceSummary,
 } from "@/lib/adapters/search-adapter";
 import type { CoverAssetView } from "@/lib/cover/cover-types";
 import { evaluateCoverWithMock } from "@/lib/cover/cover-evaluator";
@@ -14,9 +11,8 @@ import { generateTitleIntroWithOpenAI } from "@/lib/generation/llm/openai-title-
 import { generateTitleIntroSuggestions } from "@/lib/generation/title-intro-engine";
 import { saveTitleIntroGeneration } from "@/lib/generation/title-intro-repository";
 import type { TitleIntroGenerationInput } from "@/lib/generation/title-intro-types";
-import { evaluateWorkRating } from "@/lib/rating/rating-engine";
-import { saveWorkRating } from "@/lib/rating/rating-repository";
-import type { RatingInput, RatingResult, RenameSuggestion, WorkRating } from "@/lib/rating/rating-types";
+import { runOpenAIRating } from "@/lib/rating/openai-rating-service";
+import type { RatingResult, RenameSuggestion, WorkRating } from "@/lib/rating/rating-types";
 import { prisma } from "@/server/db";
 import type { BatchJobStep, CreateBatchJobInput } from "@/lib/batch-jobs/batch-job-types";
 
@@ -29,6 +25,7 @@ type WorkForBatch = Pick<
   Work,
   | "id"
   | "externalId"
+  | "contentType"
   | "title"
   | "author"
   | "description"
@@ -47,6 +44,8 @@ type BatchError = {
   provider?: string;
 };
 
+const MAX_BATCH_OPENAI_RATING_WORKS = 10;
+
 export async function createBatchJob(input: CreateBatchJobInput) {
   assertCostRiskAccepted(input);
   const uniqueWorkIds = Array.from(new Set(input.workIds.filter(Boolean)));
@@ -57,6 +56,14 @@ export async function createBatchJob(input: CreateBatchJobInput) {
 
   if (input.steps.length === 0) {
     throw createBatchError("INVALID_STEPS", "请至少选择一个批量执行步骤。", "steps 不能为空。");
+  }
+
+  if (input.steps.includes("rating") && uniqueWorkIds.length > MAX_BATCH_OPENAI_RATING_WORKS) {
+    throw createBatchError(
+      "OPENAI_RATING_BATCH_LIMIT_EXCEEDED",
+      `单次 OpenAI 批量评级最多允许 ${MAX_BATCH_OPENAI_RATING_WORKS} 本作品。`,
+      "请拆分批量任务，避免误触发过多付费请求。",
+    );
   }
 
   const totalCount = uniqueWorkIds.length * input.steps.length;
@@ -71,6 +78,8 @@ export async function createBatchJob(input: CreateBatchJobInput) {
         identifyProviderMode: input.identifyProviderMode || "mock",
         configuredSearchProvider: process.env.SEARCH_PROVIDER || "mock",
         titleIntroProvider: input.titleIntroProvider || "mock",
+        ratingProvider: "openai",
+        maxBatchOpenAIRatingWorks: MAX_BATCH_OPENAI_RATING_WORKS,
       }),
       items: {
         createMany: {
@@ -188,13 +197,14 @@ async function runBatchJobItem(item: Pick<BatchJobItem, "id" | "workId" | "step"
     await prisma.batchJobItem.update({
       where: { id: item.id },
       data: {
-        status: "success",
+        status: "skipped" in summary && summary.skipped === true ? "skipped" : "success",
         resultSummaryJson: JSON.stringify(summary),
         finishedAt: new Date(),
       },
     });
   } catch (error) {
     const normalized = normalizeBatchError(error);
+    const failureSummary = failedStepSummary(item.step, options, normalized);
 
     await prisma.batchJobItem.update({
       where: { id: item.id },
@@ -202,6 +212,7 @@ async function runBatchJobItem(item: Pick<BatchJobItem, "id" | "workId" | "step"
         status: "failed",
         errorCode: normalized.errorCode,
         errorMessage: JSON.stringify(normalized),
+        resultSummaryJson: JSON.stringify(failureSummary),
         finishedAt: new Date(),
       },
     });
@@ -227,6 +238,7 @@ async function runIdentifyStep(workId: string, identifyProviderMode: "mock" | "c
     coverFileName: work.coverFileName,
     remark: work.notes,
     externalId: work.externalId,
+    contentType: work.contentType,
   }, { searchProviderMode: identifyProviderMode });
 
   await prisma.workIdentification.create({
@@ -266,46 +278,46 @@ async function runIdentifyStep(workId: string, identifyProviderMode: "mock" | "c
 }
 
 async function runRatingStep(workId: string) {
-  const work = await prisma.work.findUnique({
-    where: { id: workId },
-    include: {
-      identifications: {
-        orderBy: { updatedAt: "desc" },
-        take: 1,
-      },
-    },
-  });
-
-  if (!work) {
-    throw createBatchError("WORK_NOT_FOUND", "作品不存在。", "请检查作品是否已被删除。");
+  const existing = await prisma.workRatingRun.findFirst({ where: { workId, status: "success" }, orderBy: { createdAt: "desc" } });
+  if (existing) {
+    return {
+      provider: "openai",
+      model: existing.model,
+      status: "skipped",
+      skipped: true,
+      ratingRunId: existing.id,
+      reason: "该作品已有成功 OpenAI 评级记录，批量任务默认跳过。请在作品详情页手动重新评级。",
+    };
   }
-
-  const identificationRecord = work.identifications[0] ?? null;
-  const identification = parseRatingIdentification(work, identificationRecord);
-  const result = evaluateWorkRating({
-    work: toRatingWorkInput(work),
-    identification: identification.value,
-  });
-  const resultWithRisks: RatingResult = identification.risks.length
-    ? {
-        ...result,
-        risks: Array.from(new Set([...result.risks, ...identification.risks])),
-      }
-    : result;
-
-  await saveWorkRating({
-    workId,
-    identificationId: identificationRecord?.id ?? null,
-    result: resultWithRisks,
-  });
-
+  const result = await runOpenAIRating(workId);
   return {
-    rating: resultWithRisks.rating,
-    score: resultWithRisks.score,
-    confidence: resultWithRisks.confidence,
-    renameSuggestion: resultWithRisks.renameSuggestion,
-    isPreliminary: !identificationRecord || identificationRecord.confidence < 0.65 || !identificationRecord.confirmed,
-    topEvidenceSummary: resultWithRisks.evidence[0] ?? "",
+    provider: "openai",
+    model: result.model,
+    status: result.status,
+    ratingRunId: result.id,
+    rating: result.rating,
+    score: result.score,
+    confidence: result.confidence,
+    renameSuggestion: result.renameSuggestion,
+    adopted: false,
+    topEvidenceSummary: result.keyEvidence[0] ?? "",
+  };
+}
+
+function failedStepSummary(step: string, options: BatchJobExecutionOptions, error: BatchError) {
+  const provider = step === "rating"
+    ? "openai"
+    : step === "title_intro"
+      ? options.titleIntroProvider
+      : step === "identify"
+        ? options.identifyProviderMode
+        : "cover_rules";
+  return {
+    provider,
+    model: step === "rating" ? process.env.OPENAI_RATING_MODEL || process.env.OPENAI_TEXT_MODEL || "未配置" : null,
+    status: "failed",
+    errorCode: error.errorCode,
+    errorMessage: error.errorMessage,
   };
 }
 
@@ -318,6 +330,7 @@ async function runTitleIntroStep(workId: string, provider: "mock" | "openai") {
         take: 1,
       },
       ratings: {
+        where: { provider: "openai" },
         orderBy: { updatedAt: "desc" },
         take: 1,
       },
@@ -480,12 +493,15 @@ export async function getBatchJobDetail(jobId: string) {
 export function assertCostRiskAccepted(input: Pick<CreateBatchJobInput, "steps" | "costRiskAccepted" | "identifyProviderMode" | "titleIntroProvider">) {
   const usesRealSearch = input.identifyProviderMode === "configured" && input.steps.includes("identify");
   const usesOpenAIText = input.titleIntroProvider === "openai" && input.steps.includes("title_intro");
+  const usesOpenAIRating = input.steps.includes("rating");
 
-  if ((usesRealSearch || usesOpenAIText) && !input.costRiskAccepted) {
+  if ((usesRealSearch || usesOpenAIText || usesOpenAIRating) && !input.costRiskAccepted) {
     throw createBatchError(
       "COST_RISK_NOT_ACCEPTED",
       "当前批量任务可能调用外部 API 并产生费用，请确认成本风险后重试。",
-      usesRealSearch && usesOpenAIText
+      usesOpenAIRating
+        ? "任务包含 OpenAI 正式评级。"
+        : usesRealSearch && usesOpenAIText
         ? "任务包含真实搜索和 OpenAI 文本生成。"
         : usesRealSearch
           ? "任务包含真实搜索。"
@@ -500,78 +516,14 @@ export function assertCostRiskAccepted(input: Pick<CreateBatchJobInput, "steps" 
       "请在服务端环境变量中配置 OPENAI_API_KEY 和 OPENAI_TEXT_MODEL 后重启服务。",
     );
   }
-}
 
-function parseRatingIdentification(
-  work: WorkForBatch,
-  identification:
-    | {
-        confidence: number;
-        confirmed: boolean;
-        confirmedTitle: string | null;
-        confirmedAuthor: string | null;
-        finalMatchJson: string;
-        candidatesJson: string;
-        risksJson: string;
-        reason: string;
-        evidenceJson: string;
-        sourceSummaryJson: string;
-      }
-    | null,
-): { value: RatingInput["identification"]; risks: string[] } {
-  if (!identification) {
-    return {
-      value: {
-        confidence: null,
-        confirmed: false,
-        finalMatch: null,
-        candidates: [],
-        risks: ["尚未进行作品识别，评级为预评级。"],
-        reason: null,
-        evidence: [],
-        sourceSummary: null,
-      },
-      risks: ["尚未进行作品识别，评级为预评级。"],
-    };
+  if (usesOpenAIRating && (!process.env.OPENAI_API_KEY || !(process.env.OPENAI_RATING_MODEL || process.env.OPENAI_TEXT_MODEL))) {
+    throw createBatchError(
+      "OPENAI_CONFIG_MISSING",
+      "OpenAI 正式评级配置缺失，无法执行批量评级。",
+      "请在服务端配置 OPENAI_API_KEY，并配置 OPENAI_RATING_MODEL 或 OPENAI_TEXT_MODEL 后重启服务。",
+    );
   }
-
-  const risks: string[] = [];
-  const finalMatch = safeJsonParse<FinalMatch | null>(identification.finalMatchJson, null, () => risks.push("识别最终匹配解析失败。"));
-  const candidates = safeJsonParse<CandidateWork[]>(identification.candidatesJson, [], () => risks.push("识别候选作品解析失败。"));
-  const parsedRisks = safeJsonParse<string[]>(identification.risksJson, [], () => risks.push("识别风险解析失败。"));
-  const evidence = safeJsonParse<SearchEvidence[]>(identification.evidenceJson, [], () => risks.push("识别证据解析失败。"));
-  const sourceSummary = safeJsonParse<SourceSummary | null>(identification.sourceSummaryJson, null, () =>
-    risks.push("识别来源摘要解析失败。"),
-  );
-  const canonicalTitle = identification.confirmedTitle || finalMatch?.title || work.title;
-  const canonicalAuthor = identification.confirmedAuthor || finalMatch?.author || work.author;
-  const gated = applyCandidateRelevanceGate(
-    {
-      title: canonicalTitle,
-      author: canonicalAuthor,
-      intro: work.description,
-      category: work.category,
-      coverFileName: work.coverFileName,
-      remark: work.notes,
-      externalId: work.externalId,
-    },
-    candidates,
-    sourceSummary,
-  );
-
-  return {
-    value: {
-      confidence: identification.confidence,
-      confirmed: identification.confirmed,
-      finalMatch,
-      candidates: gated.candidates,
-      risks: [...parsedRisks, ...risks],
-      reason: identification.reason,
-      evidence,
-      sourceSummary: gated.sourceSummary,
-    },
-    risks,
-  };
 }
 
 function parseGenerationIdentification(
@@ -659,21 +611,6 @@ function parseGenerationRating(
   };
 }
 
-function toRatingWorkInput(work: WorkForBatch): RatingInput["work"] {
-  return {
-    id: work.id,
-    title: work.title || "",
-    author: work.author || "",
-    intro: work.description || "",
-    category: work.category || "",
-    coverFileName: work.coverFileName || "",
-    remark: work.notes || "",
-    playCount: work.currentPlays ?? null,
-    clickRate: work.currentCtr ?? null,
-    completionRate: work.currentFinish ?? null,
-  };
-}
-
 function toTitleIntroWorkInput(work: WorkForBatch): TitleIntroGenerationInput["work"] {
   return {
     id: work.id,
@@ -695,6 +632,7 @@ async function getWorkForBatch(workId: string): Promise<WorkForBatch> {
     select: {
       id: true,
       externalId: true,
+      contentType: true,
       title: true,
       author: true,
       description: true,

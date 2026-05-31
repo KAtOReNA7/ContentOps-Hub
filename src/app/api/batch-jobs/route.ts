@@ -67,7 +67,9 @@ export async function POST(request: Request) {
   } catch (error) {
     const batchError = toPublicBatchError(error);
     const status =
-      batchError.errorCode === "COST_RISK_NOT_ACCEPTED" || batchError.errorCode === "OPENAI_CONFIG_MISSING" ? 400 : 500;
+      batchError.errorCode === "COST_RISK_NOT_ACCEPTED" ||
+      batchError.errorCode === "OPENAI_CONFIG_MISSING" ||
+      batchError.errorCode === "OPENAI_RATING_BATCH_LIMIT_EXCEEDED" ? 400 : 500;
 
     return structuredError(batchError.errorMessage, [`${batchError.errorCode}: ${batchError.hint}`], status);
   }

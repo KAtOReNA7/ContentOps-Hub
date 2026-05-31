@@ -3,6 +3,7 @@ export const importColumns = [
   "书名",
   "作者",
   "分类",
+  "作品类型",
   "简介",
   "备注",
   "封面文件 / 封面地址",
@@ -20,6 +21,7 @@ export const importColumnAliases = {
   title: ["书名", "原书名", "作品名", "标题", "title"],
   author: ["作者", "作者名", "author"],
   category: ["分类", "品类", "题材", "category"],
+  contentType: ["作品类型", "内容类型", "contentType", "content_type"],
   description: ["简介", "原简介", "内容简介", "intro", "description"],
   notes: ["备注", "运营备注", "notes", "remark"],
   coverFileName: [

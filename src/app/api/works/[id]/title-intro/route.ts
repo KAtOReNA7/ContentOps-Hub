@@ -63,6 +63,7 @@ export async function POST(request: Request, { params }: TitleIntroRouteProps) {
           take: 1,
         },
         ratings: {
+          where: { provider: "openai" },
           orderBy: { updatedAt: "desc" },
           take: 1,
         },

@@ -29,7 +29,7 @@ export const workExportInclude = {
   experimentResults: { orderBy: { importedAt: "desc" }, take: 10 },
   feedbackInsights: { orderBy: { createdAt: "desc" }, take: 1 },
   identifications: { orderBy: { updatedAt: "desc" }, take: 1 },
-  ratings: { orderBy: { createdAt: "desc" }, take: 1 },
+  ratings: { where: { provider: "openai" }, orderBy: { createdAt: "desc" }, take: 1 },
   titleIntroGenerations: { orderBy: { createdAt: "desc" }, take: 1 },
 } satisfies Prisma.WorkInclude;
 
@@ -112,7 +112,7 @@ export function buildWorkWhere(filters: ExportWorkFilters): Prisma.WorkWhereInpu
     and.push({ reviewStatus: filters.reviewStatus.trim() });
   }
   if (filters.rating?.trim()) {
-    and.push({ ratings: { some: { rating: filters.rating.trim() } } });
+    and.push({ ratings: { some: { rating: filters.rating.trim(), provider: "openai" } } });
   }
 
   return and.length ? { AND: and } : {};
@@ -159,6 +159,7 @@ export function toExportRow(work: WorkForExport): ExportWorkRow {
     "原书名 title": work.title,
     "作者 author": text(work.author),
     "品类 category": text(work.category),
+    "作品类型 contentType": text(work.contentType),
     "当前简介 description": work.description,
     "当前播放量 currentPlays": work.currentPlays ?? "",
     "当前点击率 currentCtr": percent(work.currentCtr),
@@ -182,6 +183,7 @@ export function toExportRow(work: WorkForExport): ExportWorkRow {
     "人工确认书名": text(identification?.confirmedTitle),
     "人工确认作者": text(identification?.confirmedAuthor),
     "作品评级 rating": text(rating?.rating),
+    "评级 provider": ratingProviderLabel(rating?.provider),
     "评级分数 score": rating?.score ?? "",
     "评级置信度 confidence": decimal(rating?.confidence),
     "评级理由 reasons": joinList(ratingReasons),
@@ -227,6 +229,11 @@ export function toExportRow(work: WorkForExport): ExportWorkRow {
     "Image2重绘3:4地址": latestRedrawPortrait?.status === "success" ? `/api/cover-renders/${latestRedrawPortrait.id}/file` : "",
     "导出时间 exportedAt": exportedAt,
   }, { controlExperiment, experimentReview, experimentRisks, winnerExperiment, work }), { feedbackInsight, feedbackRisks, feedbackTags });
+}
+
+function ratingProviderLabel(provider: string | null | undefined) {
+  if (!provider) return "";
+  return provider === "openai" ? "openai" : "legacy_rules / 历史规则评级";
 }
 
 function withFeedbackExportFields(row: ExportWorkRow, context: {

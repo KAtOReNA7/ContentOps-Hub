@@ -9,6 +9,7 @@ import { WorkIdentificationPanel, type WorkIdentificationView } from "@/app/work
 import { WorkRatingPanel } from "@/app/works/[id]/work-rating-panel";
 import { WorkReviewPanel } from "@/app/works/[id]/work-review-panel";
 import { WorkTitleIntroPanel } from "@/app/works/[id]/work-title-intro-panel";
+import { WorkContentTypeEditor } from "@/app/works/[id]/work-content-type-editor";
 import { ExpandableText } from "@/components/expandable-text";
 import { StatusBadge, coverStrategyLabel, renameSuggestionLabel, reviewStatusLabel } from "@/components/status-badge";
 import { PageHeader, SectionCard } from "@/components/ui";
@@ -32,7 +33,7 @@ export default async function WorkDetailPage({ params }: WorkDetailPageProps) {
         orderBy: { updatedAt: "desc" },
         take: 1,
       },
-      ratings: { orderBy: { createdAt: "desc" }, take: 1 },
+      ratings: { where: { provider: "openai" }, orderBy: { createdAt: "desc" }, take: 1 },
       coverEvaluations: { orderBy: { createdAt: "desc" }, take: 1 },
       coverAssets: { orderBy: { createdAt: "desc" }, take: 1 },
       titleIntroGenerations: { orderBy: { createdAt: "desc" }, take: 1 },
@@ -85,7 +86,7 @@ export default async function WorkDetailPage({ params }: WorkDetailPageProps) {
             {coverAsset ? <Image alt={`${work.title} 封面`} className="aspect-[3/4] w-full rounded-lg border border-slate-200 bg-slate-100 object-cover" height={216} src={`/api/cover-assets/${coverAsset.id}/file`} unoptimized width={160} /> : <div className="flex aspect-[3/4] items-center justify-center rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 text-center text-xs text-slate-500">暂无封面<br />可在封面处理中上传</div>}
           </div>
           <div className="grid content-start gap-3 md:grid-cols-4">
-          <SummaryItem label="识别状态" value={identification ? identification.confirmed ? "身份已确认" : "已识别，待确认" : "未识别"} />
+          <SummaryItem label="识别状态" value={identification ? identification.confirmed ? "已识别（含历史确认信息）" : "已识别" : "未识别"} />
           <SummaryItem label="评级" value={rating ? `${rating.rating} 级 / ${rating.score} 分` : "未评级"} />
           <SummaryItem label="多书名建议" value={renameSuggestionLabel(rating?.renameSuggestion)} />
           <SummaryItem label="封面策略" value={coverStrategyLabel(coverEvaluation?.confirmedStrategy || coverEvaluation?.strategy)} />
@@ -118,11 +119,13 @@ export default async function WorkDetailPage({ params }: WorkDetailPageProps) {
           <p className="text-sm text-stone-500">品类</p>
           <p className="mt-2 text-lg font-semibold text-stone-950">{work.category || "-"}</p>
         </div>
-        <div className="rounded-lg border border-stone-200 bg-white p-5">
-          <p className="text-sm text-stone-500">封面文件 / 封面地址</p>
-          <p className="mt-2 text-lg font-semibold text-stone-950">{work.coverFileName || "-"}</p>
-        </div>
+        <WorkContentTypeEditor initialValue={work.contentType} workId={work.id} />
       </section>
+
+      <details className="rounded-lg border border-stone-200 bg-white p-5">
+        <summary className="cursor-pointer text-sm font-medium text-stone-700">调试信息 / 高级信息</summary>
+        <p className="mt-3 break-all text-xs text-stone-500">封面文件：{work.coverFileName || "未设置"}</p>
+      </details>
 
       <section className="grid gap-4 md:grid-cols-3">
         <div className="rounded-lg border border-stone-200 bg-white p-5">
@@ -155,6 +158,7 @@ export default async function WorkDetailPage({ params }: WorkDetailPageProps) {
           confirmed: initialIdentification?.confirmed ?? false,
           confidence: initialIdentification?.confidence ?? null,
           hasIdentification: Boolean(initialIdentification),
+          hasImportedAuthor: Boolean(work.author?.trim()),
         }}
         workId={work.id}
       />
