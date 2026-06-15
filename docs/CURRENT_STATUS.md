@@ -1,96 +1,98 @@
-# 当前项目状态
+# CURRENT_STATUS.md
 
-更新时间：2026-05-30
+更新时间：2026-06-16
 
-## 当前阶段
+## 当前稳定化状态
 
-阶段 21.3B 已完成：作品基础信息已成为搜索匹配与 OpenAI 评级权威源，本地证据 Gate 已收敛为预处理和诊断边界。
+`ContentOps Hub` 已进入稳定化和真实业务验收阶段。当前重点是文档事实收敛、核心流程验收、批量任务恢复、成本确认、导出测试和数据安全边界。
 
-## 阶段 21.3B：作品基础信息权威源与评级证据边界
+当前不再以继续增加阶段编号作为主要开发方式。历史阶段记录已归档到 `docs/archive/phase-notes/`。
 
-- 导入表格或手动新增时录入的 `Work.title` / `Work.author` 已明确为搜索匹配和 OpenAI 评级权威源。
-- `confirmedTitle` / `confirmedAuthor` 已降级为历史兼容信息，不再覆盖作品基础信息，也不是评级前置条件。
-- 本地 evidence gate 只做标准化、来源分级、去重、盗版过滤、相关性初筛和诊断。
-- 本地 `ipEvidence`、`heatEvidence`、`valueSignalScore` 仅作为待核验初步信号，不作为正式 IP 或热度事实。
-- OpenAI Prompt 已明确禁止根据平台名或集团关系推断 IP 改编、影视化、社媒热度或作者影响力。
-- OpenAI invalid 校验已覆盖平台误判、缺失证据扣分、外部作者差异扣分、封面低分扣分、Tier 0 来源和已过滤证据引用。
-- 阶段 21.3C 已补强 OpenAI `invalid` / `failed` 运营提示：页面使用中文说明未采用原因，并明确当前评级不会被覆盖。
-- 旧规则评级已标记为 `legacy_rules / 历史规则评级`，仅保留历史兼容和诊断用途，不参与阶段 21.2 之后的正式评级。
-- 阶段 21.3C 已将搜索结果语义理解交给 OpenAI：输出逐条分析、accepted / uncertain / rejected evidence、missing evidence 和可追溯 evidence tags。
-- 本地 evidence gate 只做机械预处理和初步诊断，`preliminarySignals` 不代表正式 IP、热度或作者影响力结论。
+## 当前分支和基线版本
 
-当前仓库：
+- 本地仓库：`https://github.com/KAtOReNA7/ContentOps-Hub.git`
+- 当前分支：`codex/test`
+- 当前基线提交：`85d6549 feat: add OpenAI rating evidence workflow`
+- 远程默认分支：`origin/main`
+- 当前分支无 upstream tracking；已执行 `git fetch origin --prune` 获取远程最新状态。
 
-```text
-https://github.com/KAtOReNA7/ContentOps-Hub.git
-```
+## 已可用流程
 
-阶段 19.2 本地功能基线提交：
+- Excel / CSV 作品导入和手动新增作品。
+- 作品列表、筛选、分页、勾选、导出和单作品详情页。
+- Mock-first 作品识别，支持 configured search 显式入口。
+- OpenAI 作品价值评级运行记录、失败留痕、invalid 留痕、人工采用和补充证据。
+- Mock / OpenAI 书名简介生成。
+- 封面上传、远程封面 URL、Mock 封面评估、原图换标题和单本 Image2 重绘。
+- 人工审核状态流和最终采用结果。
+- 多书名测试结果导入、复盘和效果洞察。
+- 批量任务中心 V1：识别、评级、书名简介生成、封面评估、失败项重试。
+- Excel 和 ZIP 交付导出。
+- 设置页运行状态和敏感配置保护视图。
 
-```text
-8c6787a feat: improve batch progress and search provider flow
-```
+## 最近验证结果
 
-## 已完成能力
+最近一次只读审计：
 
-- Excel / CSV 作品导入，支持预览、校验、重复检测和入库
-- 手动新增单本作品，支持业务作品 ID、封面 URL 和本地封面上传
-- 作品列表、筛选、分页、批量勾选和作品详情页
-- Mock-first 作品识别、搜索证据保存、相关性准入门槛和人工确认
-- OpenAI SABCD 作品价值评级，支持历史记录、失败留痕、人工采用和补充证据
-- Mock / OpenAI 书名简介文本生成，OpenAI 仅用户主动选择时调用
-- 封面上传、导入封面 URL、预览、Mock 评估和策略人工确认
-- 原图换标题 / 版式优化，输出 1:1 和 3:4 封面
-- ChatGPT Image2 单作品封面重绘，默认不批量调用
-- 人工审核状态流和最终书名、简介、封面采用结果
-- 单本、全部、筛选、勾选 Excel 导出
-- Excel + 已有最终封面 ZIP 交付包
-- 批量任务中心 V1：识别、评级、书名简介生成、封面评估
-- 批量评级固定使用 OpenAI，必须人工确认成本，单次最多 10 部，已有成功评级默认跳过
-- 多书名测试结果导入和运营复盘
-- 效果回流洞察和评分校准
-- 首页运营看板、详情页处理摘要、紧凑列表、状态标签和设置页运营视图
-- Excel 导出分类工作表：运营总览、识别与评级详情、书名简介方案、封面处理、测试复盘、效果回流
-- 批量任务创建后弹出轮询式进度窗口，展示总数、完成数、成功、失败和跳过数量
-- 单本和批量识别均支持显式选择 Mock 或 configured search
-- 批量任务分别保存识别搜索 provider 和书名简介生成 provider，避免混淆
-- 阶段 20 验收资料：验收清单、报告模板、脱敏样例、已知问题和路线图
-- 设置页交付健康检查，覆盖数据库配置、上传目录、搜索服务和 OpenAI 文本配置
-- Excel 长文本列换行和更紧凑的交付阅读体验
-- 依赖安全修复：`npm audit` 已归零，PostCSS 和 SheetJS 均使用修复版本
-- Image2 高保真 UI 概念稿覆盖 App Shell、Dashboard、导入、列表、详情、批量任务、设置和空状态
-- 全局 App Shell、设计 token、中文状态映射和统一基础组件
-- Dashboard 运营工作台、紧凑作品列表、单作品运营控制台和运行状态中心
+- Browser 验证路由：`/`、`/import`、`/works`、`/works/new`、`/works/{id}`、`/analysis`、`/experiments/import`、`/settings`
+- Browser 结果：页面可打开，详情页关键模块可见，无控制台错误
+- `npm run typecheck`：通过
+- `npm run lint`：通过
+- `npm run build`：首次因 dev server 文件锁失败，停止 dev server 后通过
+- `npm run db:test`：通过，`Work count: 27`
+- `npm run test:rating-evidence`：通过，有 `MODULE_TYPELESS_PACKAGE_JSON` warning
 
-## 当前边界
+## 当前数据规模
 
-- 真实搜索保留 provider 适配层，默认仍为 Mock；具体厂商接入需按业务选择继续完善。
-- 图片生成只允许单作品手动触发，不提供默认批量生成。
-- 批量任务中心使用本地顺序执行，不引入 Redis、BullMQ 或后台 worker。
-- 批量任务异步执行依赖当前 Node 进程持续运行，服务重启不会自动恢复未完成任务。
-- 效果回流使用可解释规则，不做机器学习训练和复杂统计显著性检验。
-- 效果洞察不会自动覆盖最终采用结果。
+本地 SQLite `prisma/dev.db` 最近只读统计：
 
-## 下一步建议
+| 表 | 行数 |
+| --- | ---: |
+| `Work` | 27 |
+| `BatchJob` | 28 |
+| `BatchJobItem` | 441 |
+| `WorkIdentification` | 213 |
+| `WorkRating` | 137 |
+| `WorkRatingRun` | 11 |
+| `WorkTitleIntroGeneration` | 66 |
+| `WorkCoverEvaluation` | 72 |
+| `WorkCoverRender` | 26 |
+| `CoverAsset` | 27 |
+| `WorkExperimentResult` | 5 |
+| `WorkExperimentReview` | 2 |
+| `WorkFeedbackInsight` | 0 |
 
-优先按照 `docs/acceptance-checklist.md` 进行一次完整交付验收，并重点验证阶段 21 的运营体验：
+该规模足够做功能冒烟，不足以代表真实批量性能。
 
-1. 导入作品并完成识别、评级、书名简介生成、封面评估和人工审核。
-2. 导入多书名测试结果，检查复盘和效果回流洞察。
-3. 导出 Excel，检查原始总表和 6 个分类工作表。
-4. 导出 ZIP，确认最终封面缺失时不会阻断整个交付包。
-5. 根据实际运营团队反馈，再决定是否接入具体真实搜索服务。
-6. 检查左侧导航、详情 sticky section nav、批量任务进度颜色和空状态引导。
+## 阻断问题
 
-验收问题统一记录到 `docs/acceptance-report-template.md` 的副本中。路线规划见 `docs/roadmap.md`。
+当前没有已确认的代码级 P0 阻断。稳定化验收前仍需完成 P0 Backlog。
 
-## 禁止事项
+## 非阻断问题
 
-- 不要默认批量调用 OpenAI
-- 不允许 OpenAI 评级失败后静默回退 rules
-- 不要默认批量生成图片
-- 不要提交 `.env` / `.env.local`
-- 不要把 API key 写入代码或前端
-- 不要提交 `uploads/` 下真实图片
-- 不要提交本地 SQLite 数据库
-- 不要在没有 fallback 的情况下替换 Mock provider
+- 当前分支无 upstream tracking，`git pull --ff-only` 不能直接执行；已用 `git fetch origin --prune` 获取远程状态。
+- Windows 下 dev server 可能锁定 Prisma engine，导致 build 中 `prisma generate` 出现 `EPERM`。
+- `npm run test:rating-evidence` 存在 Node `MODULE_TYPELESS_PACKAGE_JSON` warning。
+- Browser 可能阻止直接打开 Excel / ZIP 下载型 API，需要配合 HTTP 或下载事件验证。
+
+## 当前风险
+
+- 批量任务依赖当前 Node 进程，服务重启后 running / pending 不能自动恢复。
+- 单本 OpenAI 评级尚未强制显式成本确认。
+- Excel / ZIP 结构缺少自动化断言。
+- 真实搜索 Provider 未定，继续 Mock-first。
+- 远程封面缓存进 ZIP 已延期。
+- 远程封面 SSRF 边界仍需补强。
+
+## 已批准下一切片
+
+- 实现最小批量任务恢复能力。
+- 单本 OpenAI 评级增加显式成本确认。
+
+## 尚未批准的工作
+
+- 接入真实搜索 Provider。
+- 远程封面缓存进 ZIP。
+- 删除旧 rules、`AnalysisResult` 或早期 mock 分析链路。
+- 批量替换品牌称呼。
+- 引入 Redis、BullMQ、独立 worker、多账号权限或生产部署。
