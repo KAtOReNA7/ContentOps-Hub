@@ -99,7 +99,7 @@ OpenAI 失败不回退 rules。
 
 批量任务先写入 `BatchJob` 和 `BatchJobItem`，立即返回任务 ID，再由当前 Node 进程异步顺序执行。页面通过轮询查看进度。
 
-当前不是可靠后台队列：进程退出或开发服务重启会中断运行中任务。系统维护当前进程活动任务注册表，并在 `GET /api/batch-jobs`、`GET /api/batch-jobs/[id]` 和失败项重试前做幂等协调。若数据库中任务仍为 `running` / `pending`、当前进程没有活动注册、且超过 `BATCH_JOB_INTERRUPTION_GRACE_MS` 默认 30000 毫秒宽限时间，未完成项会标记为 `failed + PROCESS_INTERRUPTED`，已成功或跳过项保持原状态和结果。该策略只提供中断识别和人工重试入口，不跨进程续跑，不自动调用搜索、OpenAI 或 Image2。
+当前不是可靠后台队列：进程退出或开发服务重启会中断运行中任务。系统维护当前进程活动任务注册表，并在动态执行的 `GET /api/batch-jobs`、`GET /api/batch-jobs/[id]` 和失败项重试前做幂等协调。若数据库中任务仍为 `running` / `pending`、当前进程没有活动注册、且超过 `BATCH_JOB_INTERRUPTION_GRACE_MS` 默认 30000 毫秒宽限时间，未完成项会标记为 `failed + PROCESS_INTERRUPTED`，已成功或跳过项保持原状态和结果。该策略只提供中断识别和人工重试入口，仅适用于当前本地单 Node 进程运行模式；多实例共享数据库不受当前注册表保护，不构成跨进程续跑，也不会自动调用搜索、OpenAI 或 Image2。
 
 ## 封面处理
 

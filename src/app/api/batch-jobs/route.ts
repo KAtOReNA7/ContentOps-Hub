@@ -4,6 +4,7 @@ import { isBatchJobStatus, isBatchJobStep, type BatchJobStep, type BatchJobType 
 import { prisma } from "@/server/db";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
   try {

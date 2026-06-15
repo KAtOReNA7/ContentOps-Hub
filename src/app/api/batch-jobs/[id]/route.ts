@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getBatchJobDetail, reconcileInterruptedBatchJobs } from "@/lib/batch-jobs/batch-job-service";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 type BatchJobRouteProps = {
   params: Promise<{ id: string }>;
