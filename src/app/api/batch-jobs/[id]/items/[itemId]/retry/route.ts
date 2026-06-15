@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { retryBatchJobItem, toPublicBatchError } from "@/lib/batch-jobs/batch-job-service";
+import { reconcileInterruptedBatchJobs, retryBatchJobItem, toPublicBatchError } from "@/lib/batch-jobs/batch-job-service";
 
 export const runtime = "nodejs";
 
@@ -13,6 +13,7 @@ type RetryBatchJobItemRouteProps = {
 export async function POST(_request: Request, { params }: RetryBatchJobItemRouteProps) {
   try {
     const { id, itemId } = await params;
+    await reconcileInterruptedBatchJobs({ jobId: id });
     const job = await retryBatchJobItem(id, itemId);
 
     return NextResponse.json({

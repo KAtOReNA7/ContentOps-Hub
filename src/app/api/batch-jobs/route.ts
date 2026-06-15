@@ -1,13 +1,15 @@
 import { NextResponse } from "next/server";
-import { createBatchJob, startBatchJobInBackground, toPublicBatchError } from "@/lib/batch-jobs/batch-job-service";
+import { createBatchJob, reconcileInterruptedBatchJobs, startBatchJobInBackground, toPublicBatchError } from "@/lib/batch-jobs/batch-job-service";
 import { isBatchJobStatus, isBatchJobStep, type BatchJobStep, type BatchJobType } from "@/lib/batch-jobs/batch-job-types";
 import { prisma } from "@/server/db";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
+    await reconcileInterruptedBatchJobs();
     const page = Math.max(Number(searchParams.get("page") || "1") || 1, 1);
     const limit = Math.min(Math.max(Number(searchParams.get("limit") || "20") || 20, 1), 100);
     const status = searchParams.get("status");

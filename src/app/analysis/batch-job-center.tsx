@@ -43,6 +43,7 @@ type BatchJobView = {
   startedAt: string | null;
   finishedAt: string | null;
   note: string | null;
+  errorSummary: string | null;
   items?: BatchJobItemView[];
 };
 
@@ -203,7 +204,7 @@ export function BatchJobCenter() {
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="font-medium text-stone-950">{stepLabel(job.type)}</span>
-                      <StatusBadge tone={batchStatusTone(job.status)}>{batchStatusLabel(job.status)}</StatusBadge>
+                      <StatusBadge tone={batchJobTone(job)}>{batchJobLabel(job)}</StatusBadge>
                     </div>
                     <p className="mt-1 text-xs text-stone-500">{formatDate(job.createdAt)}</p>
                   </div>
@@ -235,6 +236,15 @@ export function BatchJobCenter() {
             <div className="p-5 text-sm text-stone-500">{detailLoading ? "正在读取任务详情..." : "请选择一个批量任务。"}</div>
           ) : (
             <div className="space-y-5 p-4">
+              {isInterruptedJob(selectedJob) ? (
+                <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm leading-6 text-red-800">
+                  <div className="font-medium">任务因应用进程中断而停止。</div>
+                  <div>
+                    已完成结果已保留；未完成项目已标记为可重试失败项。已完成 {selectedJob.successCount + selectedJob.skippedCount} 项，未完成或失败 {selectedJob.failedCount} 项。
+                  </div>
+                </div>
+              ) : null}
+
               <div className="grid gap-3 md:grid-cols-4">
                 <SummaryCard label="总数" value={selectedJob.totalCount} />
                 <SummaryCard label="成功" value={selectedJob.successCount} />
@@ -266,7 +276,9 @@ export function BatchJobCenter() {
                         </td>
                         <td className="px-3 py-3 text-stone-700">{stepLabel(item.step)}</td>
                         <td className="px-3 py-3">
-                          <StatusBadge tone={batchStatusTone(item.status)}>{batchStatusLabel(item.status)}</StatusBadge>
+                          <StatusBadge tone={item.errorCode === "PROCESS_INTERRUPTED" ? "red" : batchStatusTone(item.status)}>
+                            {item.errorCode === "PROCESS_INTERRUPTED" ? "已中断" : batchStatusLabel(item.status)}
+                          </StatusBadge>
                         </td>
                         <td className="max-w-md px-3 py-3 text-stone-600">
                           {item.status === "failed" ? (
@@ -343,6 +355,23 @@ function progressBarClass(value: string) {
   if (value === "partial_success") return "bg-orange-500";
   if (value === "failed") return "bg-red-500";
   return "bg-stone-400";
+}
+
+function isInterruptedJob(job: BatchJobView | null) {
+  if (!job) return false;
+  return (
+    job.errorSummary?.includes("PROCESS_INTERRUPTED") ||
+    job.items?.some((item) => item.errorCode === "PROCESS_INTERRUPTED") ||
+    false
+  );
+}
+
+function batchJobLabel(job: BatchJobView) {
+  return isInterruptedJob(job) ? "已中断" : batchStatusLabel(job.status);
+}
+
+function batchJobTone(job: BatchJobView) {
+  return isInterruptedJob(job) ? "red" : batchStatusTone(job.status);
 }
 
 function formatSummary(value: string | null) {
