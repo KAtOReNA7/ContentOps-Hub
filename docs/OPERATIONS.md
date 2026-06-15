@@ -67,6 +67,19 @@ npm run build
 3. 查看失败项的 `errorCode`、`errorMessage` 和摘要。
 4. 对单条失败项执行重试。
 
+### 批量任务进程中断
+
+当前实现不会引入 Redis、BullMQ、独立 worker 或外部队列。任务中心和任务详情读取时会执行一次幂等协调：
+
+1. 仅检查数据库中仍为 `running` / `pending` 的任务。
+2. 如果当前 Node 进程活动注册表中仍有该任务，不会标记中断。
+3. 如果任务最近活动时间未超过 `BATCH_JOB_INTERRUPTION_GRACE_MS`，不会立即标记中断；默认宽限时间为 30000 毫秒。
+4. 确认为遗留任务后，成功或跳过的 `BatchJobItem` 保持原状态和结果摘要。
+5. 未完成的 `running` / `pending` 项会标记为 `failed`，错误码为 `PROCESS_INTERRUPTED`。
+6. 页面会提示应用进程中断、成功结果已保留、未完成项目可手动重试。
+
+恢复逻辑不会自动重新调用搜索、OpenAI 或 Image2。涉及真实搜索或 OpenAI 的失败项仍必须由用户主动重试，并继续遵守现有成本确认、10 本限制和 Provider 边界。
+
 ### 外部 API 配置缺失
 
 1. 在 `/settings` 查看是否已配置。
@@ -80,5 +93,5 @@ npm run build
 
 - 不使用 Redis、BullMQ 或独立 worker。
 - 进度依赖当前 Node 进程持续运行。
-- 服务重启后，运行中任务不会自动恢复。
-- 下一稳定化切片已批准实现最小批量任务恢复能力。
+- 服务重启后，系统可以识别遗留 `running` / `pending` 并把未完成项转为可重试的 `PROCESS_INTERRUPTED`。
+- 系统不会跨进程续跑、不会自动重试、不会自动调用收费 Provider。

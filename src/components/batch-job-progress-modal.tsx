@@ -15,6 +15,7 @@ type BatchJobProgress = {
   createdAt: string;
   startedAt: string | null;
   finishedAt: string | null;
+  errorSummary: string | null;
   items?: Array<{ updatedAt: string }>;
 };
 
@@ -95,8 +96,16 @@ export function BatchJobProgressModal({ jobId, onClose }: BatchJobProgressModalP
 
         <div className="mt-5 flex flex-wrap items-center gap-2">
           <span className="text-sm text-stone-600">任务类型：{job ? stepLabel(job.type) : "读取中"}</span>
-          <StatusBadge tone={batchStatusTone(job?.status ?? "pending")}>{batchStatusLabel(job?.status ?? "pending")}</StatusBadge>
+          <StatusBadge tone={isInterruptedJob(job) ? "red" : batchStatusTone(job?.status ?? "pending")}>
+            {isInterruptedJob(job) ? "已中断" : batchStatusLabel(job?.status ?? "pending")}
+          </StatusBadge>
         </div>
+
+        {isInterruptedJob(job) ? (
+          <p className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+            任务因应用进程中断而停止，已完成结果已保留；未完成项目可在批量任务中心手动重试。
+          </p>
+        ) : null}
 
         <div className="mt-4 h-3 overflow-hidden rounded-full bg-stone-100">
           <div className="h-full rounded-full bg-red-600 transition-all" style={{ width: `${progress}%` }} />
@@ -133,6 +142,10 @@ function Metric({ label, value }: { label: string; value: number }) {
       <p className="mt-1 text-xl font-semibold text-stone-950">{value}</p>
     </div>
   );
+}
+
+function isInterruptedJob(job: BatchJobProgress | null) {
+  return job?.errorSummary?.includes("PROCESS_INTERRUPTED") ?? false;
 }
 
 function stepLabel(value: string) {

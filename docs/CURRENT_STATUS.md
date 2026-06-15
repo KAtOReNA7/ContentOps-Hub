@@ -11,8 +11,8 @@
 ## 当前分支和基线版本
 
 - 本地仓库：`https://github.com/KAtOReNA7/ContentOps-Hub.git`
-- 当前分支：`codex/test`
-- 当前基线提交：`85d6549 feat: add OpenAI rating evidence workflow`
+- 当前分支：`fix/batch-job-interruption-recovery`
+- 当前基线提交：`0fb89161ae9f5714e640e793a6dd3eff9b700881`
 - 远程默认分支：`origin/main`
 - 当前分支无 upstream tracking；已执行 `git fetch origin --prune` 获取远程最新状态。
 
@@ -27,6 +27,7 @@
 - 人工审核状态流和最终采用结果。
 - 多书名测试结果导入、复盘和效果洞察。
 - 批量任务中心 V1：识别、评级、书名简介生成、封面评估、失败项重试。
+- 批量任务中断识别：页面或任务详情读取时会协调超过宽限时间、且当前进程无活动注册的 `running` / `pending` 遗留任务，将未完成项标记为 `PROCESS_INTERRUPTED` 并保留成功结果。
 - Excel 和 ZIP 交付导出。
 - 设置页运行状态和敏感配置保护视图。
 
@@ -41,6 +42,7 @@
 - `npm run build`：首次因 dev server 文件锁失败，停止 dev server 后通过
 - `npm run db:test`：通过，`Work count: 27`
 - `npm run test:rating-evidence`：通过，有 `MODULE_TYPELESS_PACKAGE_JSON` warning
+- `npm run test:batch-recovery`：通过，有 `MODULE_TYPELESS_PACKAGE_JSON` warning
 
 ## 当前数据规模
 
@@ -77,7 +79,7 @@
 
 ## 当前风险
 
-- 批量任务依赖当前 Node 进程，服务重启后 running / pending 不能自动恢复。
+- 批量任务不自动续跑；进程重启后遗留的 `running` / `pending` 会在任务中心或任务详情读取时被识别为中断，未完成项进入可手动重试状态。
 - 单本 OpenAI 评级尚未强制显式成本确认。
 - Excel / ZIP 结构缺少自动化断言。
 - 真实搜索 Provider 未定，继续 Mock-first。
@@ -86,7 +88,6 @@
 
 ## 已批准下一切片
 
-- 实现最小批量任务恢复能力。
 - 单本 OpenAI 评级增加显式成本确认。
 
 ## 尚未批准的工作

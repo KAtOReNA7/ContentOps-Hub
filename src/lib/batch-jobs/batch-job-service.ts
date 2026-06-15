@@ -15,6 +15,11 @@ import { runOpenAIRating } from "@/lib/rating/openai-rating-service";
 import type { RatingResult, RenameSuggestion, WorkRating } from "@/lib/rating/rating-types";
 import { prisma } from "@/server/db";
 import type { BatchJobStep, CreateBatchJobInput } from "@/lib/batch-jobs/batch-job-types";
+import {
+  markBatchJobActive,
+  reconcileInterruptedBatchJobsWithClient,
+  unmarkBatchJobActive,
+} from "@/lib/batch-jobs/batch-job-recovery";
 
 type BatchJobExecutionOptions = {
   identifyProviderMode: "mock" | "configured";
@@ -114,26 +119,36 @@ export function startBatchJobInBackground(jobId: string, options: BatchJobExecut
 }
 
 export async function runBatchJob(jobId: string, options: BatchJobExecutionOptions) {
-  await prisma.batchJob.update({
-    where: { id: jobId },
-    data: {
-      status: "running",
-      startedAt: new Date(),
-      errorSummary: null,
-    },
-  });
+  markBatchJobActive(jobId);
 
-  const items = await prisma.batchJobItem.findMany({
-    where: { batchJobId: jobId },
-    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-  });
+  try {
+    await prisma.batchJob.update({
+      where: { id: jobId },
+      data: {
+        status: "running",
+        startedAt: new Date(),
+        errorSummary: null,
+      },
+    });
 
-  for (const item of items) {
-    await runBatchJobItem(item, options);
-    await summarizeBatchJob(jobId);
+    const items = await prisma.batchJobItem.findMany({
+      where: { batchJobId: jobId },
+      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+    });
+
+    for (const item of items) {
+      await runBatchJobItem(item, options);
+      await summarizeBatchJob(jobId);
+    }
+
+    return summarizeBatchJob(jobId);
+  } finally {
+    unmarkBatchJobActive(jobId);
   }
+}
 
-  return summarizeBatchJob(jobId);
+export async function reconcileInterruptedBatchJobs(options: { now?: Date; graceMs?: number; jobId?: string } = {}) {
+  return reconcileInterruptedBatchJobsWithClient(prisma, options);
 }
 
 export async function retryBatchJobItem(jobId: string, itemId: string) {

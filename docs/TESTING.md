@@ -25,9 +25,13 @@ npm run db:test
 
 ```bash
 npm run test:rating-evidence
+npm run test:batch-recovery
 ```
 
-该测试覆盖评级证据 taxonomy 的本地规则。当前会出现 Node `MODULE_TYPELESS_PACKAGE_JSON` warning，这是已记录 Backlog，本任务不通过修改模块配置处理。
+- `test:rating-evidence` 覆盖评级证据 taxonomy 的本地规则。
+- `test:batch-recovery` 覆盖遗留运行任务恢复、恢复幂等、活动任务保护、成功结果保留和重试范围。
+
+当前两个 TypeScript 测试脚本会出现 Node `MODULE_TYPELESS_PACKAGE_JSON` warning，这是已记录 Backlog，本任务不通过修改模块配置处理。
 
 ## 最近验证结果
 
@@ -38,6 +42,7 @@ npm run test:rating-evidence
 - `npm run build`：首次因 dev server 文件锁失败，停止 dev server 后通过
 - `npm run db:test`：通过，`Work count: 27`
 - `npm run test:rating-evidence`：通过，存在 `MODULE_TYPELESS_PACKAGE_JSON` warning
+- `npm run test:batch-recovery`：通过，存在 `MODULE_TYPELESS_PACKAGE_JSON` warning
 
 ## Browser 验证路由
 
@@ -57,7 +62,7 @@ npm run test:rating-evidence
 ## 当前测试缺口
 
 - 端到端核心流程：导入、识别、评级、生成、封面、审核、导出完整链路。
-- 批量任务中断恢复：进程退出后的 running / pending 识别和恢复。
+- 批量任务中断恢复端到端场景：当前已有服务层专项测试，仍缺少真实浏览器创建任务、重启服务、再打开 `/analysis` 的自动化 E2E。
 - Excel 和 ZIP 结构断言：工作表、列、长文本换行、ZIP 文件清单。
 - 搜索 Provider 契约：字段归一化、限流、fallback 标记、错误摘要。
 - OpenAI 失败和非法返回：failed / invalid UI 展示和不回退规则。

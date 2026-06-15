@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getBatchJobDetail } from "@/lib/batch-jobs/batch-job-service";
+import { getBatchJobDetail, reconcileInterruptedBatchJobs } from "@/lib/batch-jobs/batch-job-service";
 
 export const runtime = "nodejs";
 
@@ -10,6 +10,7 @@ type BatchJobRouteProps = {
 export async function GET(_request: Request, { params }: BatchJobRouteProps) {
   try {
     const { id } = await params;
+    await reconcileInterruptedBatchJobs({ jobId: id });
     const job = await getBatchJobDetail(id);
 
     if (!job) {
