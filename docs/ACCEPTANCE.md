@@ -1,5 +1,28 @@
 # ACCEPTANCE.md
 
+## 数据库安全验收
+
+稳定化验收必须包含以下检查：
+
+```bash
+npm run db:health
+npm run test:database-path-guard
+npm run test:database-isolation
+npm run test:backup-create
+npm run db:baseline
+```
+
+验收标准：
+
+- `db:health` 只读通过，SQLite integrity check 为 `ok`。
+- 全部写数据库测试均输出 `Database mode: isolated test database`。
+- `test:database-isolation` 输出 `Development database unchanged`。
+- `db:baseline` 输出到 Git 忽略的 `backups/baselines/`，不包含绝对路径、密钥或正文内容。
+- `backup:create` 输出到 Git 忽略的 `backups/`，manifest 记录数据库哈希、integrity、uploads 摘要和排除项。
+- 验收后 `git status` 不得包含 `prisma/test-*.db`、`backups/`、`.env`、`.env.local`、`uploads/` 或真实 SQLite 数据库文件。
+
+历史 `Work count: 27` 到当前 `Work count: 20` 的差异仍不可追溯；验收不得把本切片描述为已恢复或解释缺失记录。
+
 ## 稳定化阶段验收条件
 
 稳定化阶段验收不是继续增加功能，而是证明当前核心工作流可被真实业务安全试跑。

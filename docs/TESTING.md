@@ -1,5 +1,53 @@
 # TESTING.md
 
+## 数据库测试边界
+
+- `npm run db:health`：开发数据库只读健康检查，连接当前 `DATABASE_URL` 指向的开发库，只执行 integrity check 和主要表计数。
+- `npm run db:test`：兼容别名，等同 `npm run db:health`；该命令现在不写入任何记录。
+- 写数据库专项测试必须使用隔离 SQLite 测试库，文件名为 `prisma/test-*.db`，运行结束后默认清理。
+- 自动测试不得写入 `prisma/dev.db`，不得选择真实 Work 作为测试写入对象。
+
+## 隔离测试命令
+
+这些命令由统一运行器启动，父进程先设置 `DATABASE_URL`，子进程再加载 Prisma：
+
+```bash
+npm run db:test-import
+npm run db:test-rating
+npm run db:test-rating-openai
+npm run db:test-title-intro
+npm run test:batch-recovery
+```
+
+每个命令输出：
+
+```text
+Database mode: isolated test database
+Database file: test-xxx.db
+Development database protected: yes
+```
+
+## 数据库保护专项
+
+```bash
+npm run test:database-path-guard
+npm run test:database-isolation
+npm run test:backup-create
+```
+
+- `test:database-path-guard` 验证 `test.db` / `test-*.db` 允许，`dev.db`、仓库外路径和任意非数据库文件拒绝。
+- `test:database-isolation` 运行全部写库测试并比较 `dev.db` 前后的 integrity、主要表计数和稳定逻辑摘要。
+- `test:backup-create` 使用临时测试库和临时 uploads 验证备份 manifest、哈希、integrity、密钥排除和目标冲突保护。
+
+## 基线和备份
+
+```bash
+npm run db:baseline
+npm run backup:create
+```
+
+输出目录 `backups/` 被 Git 忽略。基线和备份 manifest 不包含本地绝对路径、`DATABASE_URL`、API Key、`.env` 或 `.env.local`。
+
 ## 基础验证命令
 
 每个开发任务根据修改范围运行：
@@ -40,7 +88,7 @@ npm run test:batch-recovery
 - `npm run typecheck`：通过
 - `npm run lint`：通过
 - `npm run build`：首次因 dev server 文件锁失败，停止 dev server 后通过
-- `npm run db:test`：通过，`Work count: 27`
+- `npm run db:test`：历史记录曾为 `Work count: 27`；当前 `db:test` 是 `db:health` 只读别名，最新数据库事实以 `db:baseline` 的带时间戳快照为准。
 - `npm run test:rating-evidence`：通过，存在 `MODULE_TYPELESS_PACKAGE_JSON` warning
 - `npm run test:batch-recovery`：通过，存在 `MODULE_TYPELESS_PACKAGE_JSON` warning
 

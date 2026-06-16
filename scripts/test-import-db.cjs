@@ -1,3 +1,7 @@
+const { assertIsolatedTestDatabase } = require("./lib/test-database-child-guard.cjs");
+
+assertIsolatedTestDatabase();
+
 const { PrismaClient } = require("@prisma/client");
 
 async function main() {
@@ -10,15 +14,15 @@ async function main() {
     const created = await prisma.work.create({
       data: {
         externalId,
-        title: "导入链路测试作品",
-        author: "测试作者",
-        description: "用于验证批量导入阶段 Work 写入字段是否可用。",
+        title: "Isolated import test work",
+        author: "Codex Test",
+        description: "Fixture created inside an isolated SQLite test database.",
         coverFileName: "test-cover.jpg",
-        category: "测试品类",
+        category: "test",
         currentPlays: 1234,
         currentCtr: 0.12,
         currentFinish: 0.34,
-        notes: "db:test-import 自动插入",
+        notes: "isolated db:test-import fixture",
         status: "imported",
       },
       select: {
@@ -39,22 +43,16 @@ async function main() {
       },
     });
 
-    if (!found) {
-      throw new Error("Inserted Work was not found");
-    }
+    if (!found) throw new Error("Inserted Work was not found.");
+    if (found.id !== created.id) throw new Error("Inserted Work id mismatch.");
 
-    console.log("Import DB test inserted", JSON.stringify({ created, found }));
-  } catch (error) {
-    console.error(error);
-    process.exitCode = 1;
+    console.log("Import DB test inserted fixture in isolated database.");
   } finally {
     await prisma.$disconnect();
-    process.exit(process.exitCode ?? 0);
   }
 }
 
 main().catch((error) => {
   console.error(error);
-  process.exitCode = 1;
-  process.exit(process.exitCode);
+  process.exit(1);
 });

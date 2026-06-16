@@ -1,7 +1,12 @@
 // @ts-expect-error Node strip-types runtime requires the explicit TypeScript extension.
 import { PROCESS_INTERRUPTED_CODE, reconcileInterruptedBatchJobsWithClient, registerActiveBatchJobForTest } from "../src/lib/batch-jobs/batch-job-recovery.ts";
-import { PrismaClient } from "@prisma/client";
+import { createRequire } from "node:module";
 
+const require = createRequire(import.meta.url);
+const { assertIsolatedTestDatabase } = require("./lib/test-database-child-guard.cjs");
+assertIsolatedTestDatabase();
+
+const { PrismaClient } = await import("@prisma/client");
 const prisma = new PrismaClient();
 const TEST_PREFIX = "batch-recovery-test";
 const BROWSER_PREFIX = "batch-recovery-browser-fixture";

@@ -1,3 +1,7 @@
+const { assertIsolatedTestDatabase } = require("./lib/test-database-child-guard.cjs");
+
+assertIsolatedTestDatabase();
+
 const { PrismaClient } = require("@prisma/client");
 
 async function main() {
@@ -6,16 +10,16 @@ async function main() {
   try {
     await prisma.$connect();
 
-    const work = await prisma.work.findFirst({
-      orderBy: { createdAt: "desc" },
+    const work = await prisma.work.create({
+      data: {
+        externalId: `TEST-RATING-${Date.now()}`,
+        title: "Isolated rating test work",
+        author: "Codex Test",
+        description: "Fixture created for WorkRating persistence tests.",
+        category: "test",
+      },
       select: { id: true },
     });
-
-    if (!work) {
-      console.error("No Work found. Please import a Work before running db:test-rating.");
-      process.exitCode = 1;
-      return;
-    }
 
     const rating = await prisma.workRating.create({
       data: {
@@ -23,11 +27,11 @@ async function main() {
         rating: "B",
         score: 66,
         confidence: 0.78,
-        reasonsJson: JSON.stringify(["测试评级写入"]),
-        risksJson: JSON.stringify(["测试风险"]),
-        evidenceJson: JSON.stringify(["测试证据"]),
+        reasonsJson: JSON.stringify(["isolated rating write"]),
+        risksJson: JSON.stringify(["test risk"]),
+        evidenceJson: JSON.stringify(["test evidence"]),
         renameSuggestion: "recommended",
-        renameReason: "测试多书名建议",
+        renameReason: "isolated test",
       },
       select: {
         id: true,
@@ -46,30 +50,16 @@ async function main() {
       },
     });
 
-    if (!found) {
-      throw new Error("Inserted WorkRating was not found");
-    }
+    if (!found) throw new Error("Inserted WorkRating was not found.");
+    if (found.rating !== "B" || found.score !== 66) throw new Error("Inserted WorkRating values were not preserved.");
 
-    console.log(
-      "Rating DB test inserted",
-      JSON.stringify({
-        workId: rating.workId,
-        ratingId: rating.id,
-        rating: found.rating,
-        score: found.score,
-      }),
-    );
-  } catch (error) {
-    console.error(error);
-    process.exitCode = 1;
+    console.log("Rating DB test inserted fixture in isolated database.");
   } finally {
     await prisma.$disconnect();
-    process.exit(process.exitCode ?? 0);
   }
 }
 
 main().catch((error) => {
   console.error(error);
-  process.exitCode = 1;
-  process.exit(process.exitCode);
+  process.exit(1);
 });

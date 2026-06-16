@@ -1,64 +1,88 @@
+const { assertIsolatedTestDatabase } = require("./lib/test-database-child-guard.cjs");
+
+assertIsolatedTestDatabase();
+
 const { PrismaClient } = require("@prisma/client");
 
 const prisma = new PrismaClient();
 
 async function main() {
-  const work = await prisma.work.findFirst({
-    orderBy: { createdAt: "desc" },
+  const work = await prisma.work.create({
+    data: {
+      externalId: `TEST-TITLE-INTRO-${Date.now()}`,
+      title: "Isolated title intro test work",
+      author: "Codex Test",
+      description: "Fixture for title intro persistence tests.",
+      category: "test",
+    },
   });
 
-  if (!work) {
-    console.error("No Work record found. Import at least one work before running title intro DB test.");
-    process.exitCode = 1;
-    return;
-  }
-
-  const identification = await prisma.workIdentification.findFirst({
-    where: { workId: work.id },
-    orderBy: { createdAt: "desc" },
+  const identification = await prisma.workIdentification.create({
+    data: {
+      workId: work.id,
+      confidence: 0.9,
+      finalMatchJson: JSON.stringify({ title: work.title, author: work.author }),
+      reason: "isolated fixture",
+      risksJson: "[]",
+      evidenceJson: JSON.stringify(["isolated fixture"]),
+      candidatesJson: "[]",
+      searchProvider: "mock",
+      searchQuery: work.title,
+      searchResultsJson: "[]",
+      riskHintsJson: "[]",
+    },
   });
 
-  const rating = await prisma.workRating.findFirst({
-    where: { workId: work.id },
-    orderBy: { createdAt: "desc" },
+  const rating = await prisma.workRating.create({
+    data: {
+      workId: work.id,
+      rating: "B",
+      score: 66,
+      confidence: 0.78,
+      reasonsJson: JSON.stringify(["isolated rating"]),
+      risksJson: "[]",
+      evidenceJson: "[]",
+      renameSuggestion: "recommended",
+      renameReason: "isolated test",
+    },
   });
 
   const titleVariants = [
     {
-      title: `${work.title}：测试优化标题`,
-      sellingPoint: "测试卖点",
-      targetAudience: "测试听众",
-      reason: "数据库写入测试",
-      risk: "测试记录，不代表真实生成结果",
-      styleTag: "测试",
+      title: `${work.title}: optimized`,
+      sellingPoint: "test selling point",
+      targetAudience: "test audience",
+      reason: "database write test",
+      risk: "test-only record",
+      styleTag: "test",
     },
   ];
 
   const generation = await prisma.workTitleIntroGeneration.create({
     data: {
       workId: work.id,
-      identificationId: identification?.id ?? null,
-      ratingId: rating?.id ?? null,
+      identificationId: identification.id,
+      ratingId: rating.id,
       shouldGenerateVariants: true,
       strategy: "rename_test",
-      strategyReason: "db:test-title-intro test record",
+      strategyReason: "isolated db:test-title-intro record",
       titleVariantsJson: JSON.stringify(titleVariants),
       introVariantJson: JSON.stringify({
-        intro: "这是一条用于验证书名和简介生成结果保存能力的测试简介。",
-        reason: "数据库写入测试",
-        styleTag: "测试",
-        risk: "测试记录，不代表真实生成结果",
+        intro: "Short test intro stored inside an isolated database.",
+        reason: "database write test",
+        styleTag: "test",
+        risk: "test-only record",
       }),
       coverPromptsJson: JSON.stringify([
         {
           ratio: "1:1",
-          prompt: "测试封面 prompt",
-          reason: "数据库写入测试",
-          risk: "测试记录，不生成图片",
+          prompt: "test cover prompt",
+          reason: "database write test",
+          risk: "does not generate images",
         },
       ]),
-      risksJson: JSON.stringify(["测试记录"]),
-      evidenceJson: JSON.stringify(["db:test-title-intro"]),
+      risksJson: JSON.stringify(["test-only record"]),
+      evidenceJson: JSON.stringify(["isolated db:test-title-intro"]),
     },
   });
 
@@ -66,18 +90,14 @@ async function main() {
     where: { id: generation.id },
   });
 
-  if (!found) {
-    console.error("WorkTitleIntroGeneration insert failed: record was not found after create.");
-    process.exitCode = 1;
-    return;
-  }
+  if (!found) throw new Error("WorkTitleIntroGeneration insert failed.");
 
   const parsedTitleVariants = JSON.parse(found.titleVariantsJson);
+  if (!Array.isArray(parsedTitleVariants) || parsedTitleVariants.length !== 1) {
+    throw new Error("Stored title variants were not preserved.");
+  }
 
-  console.log(`Work id: ${work.id}`);
-  console.log(`Generation id: ${found.id}`);
-  console.log(`strategy: ${found.strategy}`);
-  console.log(`titleVariants count: ${Array.isArray(parsedTitleVariants) ? parsedTitleVariants.length : 0}`);
+  console.log("Title intro generation DB test passed in isolated database.");
 }
 
 main()

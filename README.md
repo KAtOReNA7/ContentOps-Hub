@@ -27,6 +27,22 @@
 
 当前真实状态以 [docs/CURRENT_STATUS.md](docs/CURRENT_STATUS.md) 为准。历史阶段流水账已归档到 [docs/archive/phase-notes/](docs/archive/phase-notes/)。
 
+## 数据安全命令
+
+本地开发数据库默认为 `prisma/dev.db`。历史 `Work count: 27` 到当前 `Work count: 20` 的差异仍不可追溯；项目不宣称已经恢复或解释缺失记录。后续以带时间戳的基线快照为准。
+
+```bash
+npm run db:health
+npm run db:baseline
+npm run backup:create
+npm run test:database-isolation
+```
+
+- `db:health` / `db:test`：开发库只读健康检查。
+- `db:baseline`：生成本地基线快照到 Git 忽略的 `backups/baselines/`。
+- `backup:create`：创建本地一致性备份，不包含 `.env`、`.env.local` 或 API Key。
+- `test:database-isolation`：验证写库测试使用隔离 `prisma/test-*.db`，且 `dev.db` 业务表逻辑摘要不变。
+
 ## 产品概览
 
 ContentOps Hub 服务于不懂代码的有声书运营人员，帮助运营团队批量处理作品资料，并快速判断：
