@@ -1594,3 +1594,18 @@ Prisma 同步：
 - 平台名称和集团关系不得推断 IP 改编：爱奇艺文学不等于爱奇艺影视，腾讯动漫不等于腾讯视频，网易云音乐不等于门户新闻热度。
 - 完整 OpenAI 分区输出保存于 `WorkRatingRun.rawResponseJson`；普通页面只展示证据数量、标签摘要和运营可读错误。
 - 批量 rating step 继续使用 OpenAI rating run，单条失败隔离，不 fallback 到 legacy rules。
+
+## 阶段 21.3D：评级证据展示、人工补充证据与采用体验完善
+
+更新时间：2026-06-01
+
+- 开始前检查：`git status --short` 干净，当前分支 `main`；首次 `npm run typecheck` 因重置后 Prisma Client 尚未生成而失败，执行 `npm exec -- prisma generate` 后通过。
+- 审计确认：`WorkRatingRun`、`WorkRatingSupplement`、`acceptedEvidence`、`uncertainEvidence`、`rejectedEvidence` 和 `evidenceTags` 均已存在，本阶段没有重写 OpenAI 评级核心链路，也没有修改 Prisma schema。
+- `GET /api/works/[id]/rating/runs` 在保留 `runs` 和 `legacyRating` 的基础上，新增 `latestRun`、`latestSuccessfulRun`、`adoptedRun` 和 `latestInvalidOrFailedRun`，便于前端清晰区分当前采用、待采用建议和最新异常运行。
+- 作品详情页价值评级模块已整理为：当前采用评级卡、OpenAI 评级操作区、待采用评级建议卡、invalid / failed 提示卡、证据分区分析、人工补充证据和最近 10 条 OpenAI Rating Runs 历史。
+- `acceptedEvidence` 展示来源、来源等级、证据类型、主张、正负向影响、重要程度和采信原因；高权重证据视觉突出。
+- `uncertainEvidence` 和 `rejectedEvidence` 默认折叠，明确不能作为核心评级依据；`missingEvidence` 标记“缺失不等于扣分”，`shouldPenalize=false` 显示“不扣分”。
+- `evidenceTags` 单独展示官方/首发、可信三方、有声、社媒热度、IP 改编和作者影响力标签；没有明确 IP 证据时显示“未发现可确认 IP 改编证据”。
+- 人工补充证据支持信息类型下拉、标题、内容、来源平台、证据链接、重要程度；证据链接增加 http/https 校验，删除前二次确认，新增成功后提示可重新评级。
+- invalid / failed run 显示运营可读中文提示，技术诊断和 raw response 仅在折叠区域展示；invalid / failed 不能采用，也不会覆盖当前采用评级。
+- legacy rules 区域默认折叠，并继续标记为“历史规则评级，仅供参考，不参与当前正式评级”。

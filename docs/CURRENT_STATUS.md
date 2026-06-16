@@ -1,10 +1,10 @@
 # 当前项目状态
 
-更新时间：2026-05-30
+更新时间：2026-06-01
 
 ## 当前阶段
 
-阶段 21.3B 已完成：作品基础信息已成为搜索匹配与 OpenAI 评级权威源，本地证据 Gate 已收敛为预处理和诊断边界。
+阶段 21.3D 已完成：作品基础信息仍是搜索匹配与 OpenAI 评级权威源，OpenAI 评级证据分区、人工补充证据、运行历史和人工采用体验已整理为运营可复核页面。
 
 ## 阶段 21.3B：作品基础信息权威源与评级证据边界
 
@@ -18,6 +18,9 @@
 - 旧规则评级已标记为 `legacy_rules / 历史规则评级`，仅保留历史兼容和诊断用途，不参与阶段 21.2 之后的正式评级。
 - 阶段 21.3C 已将搜索结果语义理解交给 OpenAI：输出逐条分析、accepted / uncertain / rejected evidence、missing evidence 和可追溯 evidence tags。
 - 本地 evidence gate 只做机械预处理和初步诊断，`preliminarySignals` 不代表正式 IP、热度或作者影响力结论。
+- 阶段 21.3D 已在作品详情页展示当前采用 OpenAI 评级、待采用建议、invalid / failed 提示、证据分区、证据标签摘要、人工补充证据和最近 10 条 OpenAI 评级历史。
+- 人工补充证据支持新增、删除、链接校验和重要程度标记；重新评级时进入 OpenAI 快照，但生成结果仍需人工采用。
+- `missingEvidence` 在页面明确标记为补充建议，不等于扣分；`uncertainEvidence` / `rejectedEvidence` 默认折叠，不作为核心价值依据。
 
 当前仓库：
 
@@ -38,6 +41,7 @@ https://github.com/KAtOReNA7/ContentOps-Hub.git
 - 作品列表、筛选、分页、批量勾选和作品详情页
 - Mock-first 作品识别、搜索证据保存、相关性准入门槛和人工确认
 - OpenAI SABCD 作品价值评级，支持历史记录、失败留痕、人工采用和补充证据
+- OpenAI 评级证据分区复核，支持 accepted / uncertain / rejected evidence、missing evidence 和 evidenceTags 展示
 - Mock / OpenAI 书名简介文本生成，OpenAI 仅用户主动选择时调用
 - 封面上传、导入封面 URL、预览、Mock 评估和策略人工确认
 - 原图换标题 / 版式优化，输出 1:1 和 3:4 封面

@@ -881,6 +881,8 @@ Dashboard 直接使用 Prisma 聚合，不使用早期 Mock 统计：
 
 阶段 21.3C 证据分区补充：真实搜索结果经过本地标准化、域名归一、来源分级、同站点去重、盗版过滤、数量截断和初步诊断后进入 OpenAI。OpenAI 逐条输出 `searchResultAnalysis`，并形成 `acceptedEvidence`、`uncertainEvidence`、`rejectedEvidence`、`missingEvidence` 和 `evidenceTags`。正式评级只能依赖作品基础信息、人工补充证据和 `acceptedEvidence`。`uncertainEvidence` 只能影响置信度或风险，`rejectedEvidence` 不得影响评级，`evidenceTags=true` 必须能追溯到已采信证据。
 
+阶段 21.3D 展示补充：作品详情页已将 OpenAI rating run 拆成当前采用评级、待采用建议、invalid/failed 提示、证据分区、证据标签、人工补充证据和最近 10 条历史运行。页面只把 `acceptedEvidence` 显示为可参与评级的正式证据；`uncertainEvidence` 和 `rejectedEvidence` 默认折叠且不得展示为正向价值依据；`missingEvidence` 明确标记为补充建议，不等于扣分。人工补充证据会进入下一次 OpenAI 评级快照，但仍由 OpenAI 输出新的待采用建议，必须人工采用后才写入当前评级投影。
+
 核心架构方向清晰：
 
 - Mock-first 保证本地可用。
