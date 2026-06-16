@@ -109,7 +109,15 @@ export async function adoptOpenAIRatingRun(workId: string, runId: string) {
 export async function listOpenAIRatingRuns(workId: string) {
   const runs = await prisma.workRatingRun.findMany({ where: { workId }, orderBy: { createdAt: "desc" } });
   const legacyRating = await prisma.workRating.findFirst({ where: { workId, provider: { not: "openai" } }, orderBy: { createdAt: "asc" } });
-  return { runs: runs.map(toPublicRatingRun), legacyRating: legacyRating ? { ...legacyRating, provider: "legacy_rules", label: "历史规则评级，仅供参考，不参与当前正式评级" } : null };
+  const publicRuns = runs.map(toPublicRatingRun);
+  return {
+    runs: publicRuns,
+    latestRun: publicRuns[0] ?? null,
+    latestSuccessfulRun: publicRuns.find((run) => run.status === "success") ?? null,
+    adoptedRun: publicRuns.find((run) => run.adopted) ?? null,
+    latestInvalidOrFailedRun: publicRuns.find((run) => run.status === "invalid" || run.status === "failed") ?? null,
+    legacyRating: legacyRating ? { ...legacyRating, provider: "legacy_rules", label: "历史规则评级，仅供参考，不参与当前正式评级" } : null,
+  };
 }
 
 export async function createRatingSupplement(workId: string, input: RatingSupplementInput) {
@@ -239,6 +247,7 @@ function toPublicRatingRun(run: {
     riskNotes: safeJsonParse<string[]>(run.risksJson, []), keyEvidence: safeJsonParse<string[]>(run.evidenceJson, []),
     evidenceWeighting: safeJsonParse(run.evidenceWeightingJson, []), errorMessage: run.errorMessage, createdAt: run.createdAt,
     updatedAt: run.updatedAt ?? run.createdAt, inputSnapshot: safeJsonParse(run.inputSnapshotJson ?? "{}", {}),
+    rawResponse: run.rawResponseJson ? safeJsonParse(run.rawResponseJson, null) : null,
   };
 }
 

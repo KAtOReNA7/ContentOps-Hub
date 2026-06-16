@@ -4,17 +4,19 @@
 
 ## 当前稳定化状态
 
-`ContentOps Hub` 已进入稳定化和真实业务验收阶段。当前重点是文档事实收敛、核心流程验收、批量任务恢复、成本确认、导出测试和数据安全边界。
+`ContentOps Hub` 已进入稳定化和真实业务验收阶段。当前重点是文档事实收敛、核心流程验收、批量任务恢复、成本确认、导出测试、数据安全边界，以及 OpenAI 评级证据复核体验。
 
 当前不再以继续增加阶段编号作为主要开发方式。历史阶段记录已归档到 `docs/archive/phase-notes/`。
+
+阶段 21.3D 已补充完成：作品详情页可展示当前采用 OpenAI 评级、待采用建议、invalid / failed 提示、证据分区、证据标签摘要、人工补充证据和最近 10 条 OpenAI 评级历史。
 
 ## 当前分支和基线版本
 
 - 本地仓库：`https://github.com/KAtOReNA7/ContentOps-Hub.git`
-- 当前分支：`fix/batch-job-interruption-recovery`
-- 当前基线提交：`0fb89161ae9f5714e640e793a6dd3eff9b700881`
+- 当前分支：`main`
 - 远程默认分支：`origin/main`
-- 当前分支无 upstream tracking；已执行 `git fetch origin --prune` 获取远程最新状态。
+- 远程同步基线：`4aca0c8eb08b5f979463074be01fcdec89bd9094`
+- 已合并本地保存分支：`codex/save-phase-21-3d-rating-review`
 
 ## 已可用流程
 
@@ -22,6 +24,8 @@
 - 作品列表、筛选、分页、勾选、导出和单作品详情页。
 - Mock-first 作品识别，支持 configured search 显式入口。
 - OpenAI 作品价值评级运行记录、失败留痕、invalid 留痕、人工采用和补充证据。
+- OpenAI 评级证据分区复核，支持 `acceptedEvidence`、`uncertainEvidence`、`rejectedEvidence`、`missingEvidence` 和 `evidenceTags` 展示。
+- 人工补充证据支持新增、删除、链接校验和重要程度标记；重新评级时进入 OpenAI 快照，但生成结果仍需人工采用。
 - Mock / OpenAI 书名简介生成。
 - 封面上传、远程封面 URL、Mock 封面评估、原图换标题和单本 Image2 重绘。
 - 人工审核状态流和最终采用结果。
@@ -43,6 +47,18 @@
 - `npm run db:test`：通过，`Work count: 27`
 - `npm run test:rating-evidence`：通过，有 `MODULE_TYPELESS_PACKAGE_JSON` warning
 - `npm run test:batch-recovery`：通过，有 `MODULE_TYPELESS_PACKAGE_JSON` warning
+
+阶段 21.3D 本地合并前验证：
+
+- `npm exec -- prisma validate`：通过
+- `npm exec -- prisma generate`：通过
+- `npm run db:push`：通过
+- `npm run typecheck`：通过
+- `npm run test:rating-evidence`：通过
+- `npm run db:test-rating-openai`：通过
+- `npm run db:test`：通过
+- `npm run lint`：通过
+- `npm run build`：通过
 
 ## 当前数据规模
 
@@ -72,7 +88,6 @@
 
 ## 非阻断问题
 
-- 当前分支无 upstream tracking，`git pull --ff-only` 不能直接执行；已用 `git fetch origin --prune` 获取远程状态。
 - Windows 下 dev server 可能锁定 Prisma engine，导致 build 中 `prisma generate` 出现 `EPERM`。
 - `npm run test:rating-evidence` 存在 Node `MODULE_TYPELESS_PACKAGE_JSON` warning。
 - Browser 可能阻止直接打开 Excel / ZIP 下载型 API，需要配合 HTTP 或下载事件验证。
