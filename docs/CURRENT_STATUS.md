@@ -1,5 +1,30 @@
 # CURRENT_STATUS.md
 
+## P0 数据基线说明（2026-06-16）
+
+- 历史文档曾记录 `Work count: 27`，当前开发数据库 `prisma/dev.db` 的只读基线为 `Work count: 20`。
+- 当前无法通过 SQLite、Git 或现有日志追溯解释 7 条 Work 记录差异；该事件保留为历史数据基线风险。
+- 本稳定化切片不解释、不恢复、不补造缺失记录，只建立后续可追踪性、备份能力和自动测试隔离。
+- 当前数据库计数必须以带采集时间的 `npm run db:baseline` 快照为准，不得把某次 `Work=20` 当成永久事实。
+- 自动测试不得写入 `prisma/dev.db`；写库测试必须使用 `prisma/test-*.db` 隔离库。
+
+### 当前只读基线
+
+- 采集时间：2026-06-16 16:43:26 +08:00
+- Git HEAD：`898b2040e9df8c53ec87545ee0a2fbec82281b07`
+- 数据库文件名：`dev.db`
+- 文件大小：`1253376`
+- SHA-256：`165cbae1989e41eba9a3e1f5659e49462606ef778d9d96235692332990e4dc6d`
+- SQLite integrity check：`ok`
+- 主要表计数：`Work=20`，`BatchJob=2`，`BatchJobItem=6`，`WorkIdentification=24`，`WorkRating=24`，`WorkRatingRun=3`，`WorkTitleIntroGeneration=10`，`WorkCoverEvaluation=8`，`WorkCoverRender=26`，`CoverAsset=20`
+
+### 数据保护命令
+
+- `npm run db:health`：只读检查开发库 integrity 和主要表计数。
+- `npm run db:test`：兼容别名，等同 `npm run db:health`，不写库。
+- `npm run db:baseline`：只读生成带时间戳的本地基线快照，输出到 Git 忽略的 `backups/baselines/`。
+- `npm run backup:create`：创建本地一致性备份，输出到 Git 忽略的 `backups/`，不包含 `.env`、`.env.local` 或 API Key。
+
 更新时间：2026-06-16
 
 ## 当前稳定化状态
@@ -45,7 +70,7 @@
 - `npm run typecheck`：通过
 - `npm run lint`：通过
 - `npm run build`：首次因 dev server 文件锁失败，停止 dev server 后通过
-- `npm run db:test`：通过，`Work count: 27`
+- `npm run db:test`：历史记录曾为 `Work count: 27`，当前已由 `db:health` / `db:baseline` 取代；最新只读基线见本文顶部 P0 数据基线说明。
 - `npm run test:rating-evidence`：通过，有 `MODULE_TYPELESS_PACKAGE_JSON` warning
 - `npm run test:batch-recovery`：通过，有 `MODULE_TYPELESS_PACKAGE_JSON` warning
 

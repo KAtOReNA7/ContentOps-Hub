@@ -1,5 +1,44 @@
 # OPERATIONS.md
 
+## 数据库基线与备份
+
+本地开发数据库默认为 `prisma/dev.db`。历史上曾出现文档记录 `Work count: 27`、当前只读基线 `Work count: 20` 的差异，现有 SQLite、Git 和日志无法追溯解释该差异。本项目保留该事件为历史数据基线风险，不恢复、不补造缺失记录。
+
+常用命令：
+
+```bash
+npm run db:health
+npm run db:baseline
+npm run backup:create
+```
+
+- `db:health` 只读检查开发库 integrity 和主要表数量。
+- `db:baseline` 生成本地基线快照到 `backups/baselines/`。
+- `backup:create` 使用 SQLite 一致性能力备份 `dev.db`、`uploads/` 和 `.env.example`，并生成 manifest。
+- `backups/` 被 Git 忽略；备份不包含 `.env`、`.env.local`、API Key 或本地绝对路径。
+
+## 人工恢复步骤
+
+当前不提供无需确认的自动恢复命令。需要恢复时按以下步骤人工处理：
+
+1. 停止开发服务器和所有可能占用 SQLite 的 Node 进程。
+2. 对当前异常状态先执行一次紧急备份，避免覆盖唯一现场。
+3. 选择目标备份目录。
+4. 校验 `manifest.json` 中的数据库 SHA-256 和文件大小。
+5. 对目标备份数据库运行 SQLite integrity check。
+6. 手工替换 `prisma/dev.db` 和 `uploads/`。
+7. 运行 `npm exec -- prisma validate`。
+8. 运行 `npm run db:health`。
+9. 启动项目。
+10. 使用 Browser 抽查 `/works`、单作品详情、`/analysis`、`/settings` 等核心页面。
+
+警告：
+
+- 不要在开发服务器运行时覆盖 `dev.db`。
+- 不要自动删除当前数据库。
+- 不要把 `.env` 或 `.env.local` 从备份中恢复。
+- 未经用户明确授权，不要对 `dev.db` 执行 reset、seed、`deleteMany` 或 fixture 清理。
+
 ## Windows 开发环境
 
 本项目当前主要在 Windows + PowerShell 环境下开发。路径中包含空格时，命令应使用引号或 `-LiteralPath`。Markdown 文件统一按 UTF-8 读取和写入。
