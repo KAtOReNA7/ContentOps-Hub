@@ -3,6 +3,7 @@ import { generateRatingWithOpenAI, OpenAIRatingValidationError, OPENAI_RATING_PR
 import type { OpenAIRatingResultPayload, RatingInput, RatingResult, RatingSupplementInput } from "@/lib/rating/rating-types";
 import { prisma } from "@/server/db";
 import { normalizeContentType, normalizeSearchEvidenceForRating } from "@/lib/evidence/source-taxonomy";
+import { validateOpenAIRatingConfig } from "@/lib/rating/openai-rating-config";
 import { appendRatingRecoveryHint, mapRatingInvalidReasonToUserMessage } from "@/lib/rating/rating-error-messages";
 import { createRatingRequestError, normalizeRatingError } from "@/lib/rating/rating-errors";
 
@@ -17,6 +18,7 @@ export async function runOpenAIRating(workId: string, options: { adoptResult?: b
       runStatus: "failed",
     });
   }
+  validateOpenAIRatingConfig();
   const snapshot = await buildRatingSnapshot(workId);
   const model = process.env.OPENAI_RATING_MODEL || process.env.OPENAI_TEXT_MODEL || "未配置";
   const run = await prisma.workRatingRun.create({

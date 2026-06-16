@@ -144,6 +144,21 @@ export function ratingErrorResponse(error: NormalizedRatingError) {
   };
 }
 
+export function ratingHistoryReadErrorResponse() {
+  const message = "读取 OpenAI 评级记录失败，请稍后重试；已有评级结果不会被修改。";
+  return {
+    success: false,
+    message,
+    code: "OPENAI_UPSTREAM_ERROR" as const,
+    errors: [message],
+    error: {
+      code: "OPENAI_UPSTREAM_ERROR" as const,
+      message,
+      hint: "如果持续失败，请检查本地数据库连接和服务运行状态；系统不会返回敏感诊断内容。",
+    },
+  };
+}
+
 function safeErrorText(error: unknown) {
   const raw = error instanceof Error ? error.message : String(error || "");
   return raw
