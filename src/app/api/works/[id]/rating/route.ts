@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { listOpenAIRatingRuns, runOpenAIRating } from "@/lib/rating/openai-rating-service";
-import { mapRatingFailureToUserMessage } from "@/lib/rating/rating-error-messages";
+import { listOpenAIRatingRuns } from "@/lib/rating/openai-rating-service";
+import { handleSingleRatingRunRequest } from "@/lib/rating/single-rating-request";
 
 export const runtime = "nodejs";
 type Props = { params: Promise<{ id: string }> };
@@ -15,15 +15,11 @@ export async function GET(_request: Request, { params }: Props) {
 }
 
 export async function POST(_request: Request, { params }: Props) {
-  try {
-    const { id } = await params;
-    return NextResponse.json({ success: true, data: await runOpenAIRating(id) });
-  } catch (error) {
-    return failed("OpenAI 作品评级失败。", error);
-  }
+  const result = await handleSingleRatingRunRequest(_request, (await params).id);
+  return NextResponse.json(result.body, { status: result.status });
 }
 
 function failed(message: string, error: unknown) {
   return NextResponse.json({ success: false, message, errors: [safeMessage(error)] }, { status: 500 });
 }
-function safeMessage(error: unknown) { return mapRatingFailureToUserMessage(error); }
+function safeMessage(error: unknown) { return error instanceof Error ? error.message : "未知错误"; }

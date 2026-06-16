@@ -24,6 +24,7 @@
 - 作品列表、筛选、分页、勾选、导出和单作品详情页。
 - Mock-first 作品识别，支持 configured search 显式入口。
 - OpenAI 作品价值评级运行记录、失败留痕、invalid 留痕、人工采用和补充证据。
+- 单本真实 OpenAI 评级已要求显式成本确认，API 使用 `costConfirmed: true` 防绕过，并在同一作品已有 running 评级时返回 `RATING_ALREADY_RUNNING`。
 - OpenAI 评级证据分区复核，支持 `acceptedEvidence`、`uncertainEvidence`、`rejectedEvidence`、`missingEvidence` 和 `evidenceTags` 展示。
 - 人工补充证据支持新增、删除、链接校验和重要程度标记；重新评级时进入 OpenAI 快照，但生成结果仍需人工采用。
 - Mock / OpenAI 书名简介生成。
@@ -47,6 +48,10 @@
 - `npm run db:test`：通过，`Work count: 27`
 - `npm run test:rating-evidence`：通过，有 `MODULE_TYPELESS_PACKAGE_JSON` warning
 - `npm run test:batch-recovery`：通过，有 `MODULE_TYPELESS_PACKAGE_JSON` warning
+
+当前稳定化切片验证：
+
+- `npm run test:single-rating-cost`：通过，使用 stub，不调用真实 OpenAI。
 
 阶段 21.3D 本地合并前验证：
 

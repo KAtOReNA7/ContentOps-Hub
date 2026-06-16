@@ -55,3 +55,14 @@
 - 旧 rules 正式评级入口和相关展示文案。
 
 删除候选仅标记，不在稳定化文档切片中删除。
+## 已完成稳定化切片：单本 OpenAI 评级成本确认
+
+- 单本真实 OpenAI 评级已增加前端确认弹窗和 API 层 `costConfirmed: true` 校验。
+- 已增加 `RATING_ALREADY_RUNNING` 最小并发保护。
+- 已增加单本评级错误码归一和脱敏响应。
+- 已增加 `npm run test:single-rating-cost` 专项测试。
+
+后续仍可继续细化：
+
+- 将单本 OpenAI 评级成本确认纳入端到端 Browser 自动断言。
+- 增加调用成本统计和操作日志。

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import Link from "next/link";
 import { StatusBadge, ratingTone, renameSuggestionLabel } from "@/components/status-badge";
 
 type RatingStatus = "pending" | "running" | "success" | "failed" | "invalid" | string;
@@ -90,6 +91,8 @@ type RunsData = {
 };
 type IdentificationStatus = { confirmed: boolean; confidence: number | null; hasIdentification: boolean; hasImportedAuthor: boolean };
 type SearchEvidenceView = { resultId: string; title?: string; detail?: string; url?: string | null; sourceName?: string; sourcePlatform?: string; sourceTier?: number | string };
+type RatingActionMode = "new" | "rerun" | "supplement";
+type ApiErrorInfo = { code?: string; hint?: string; message: string };
 
 const sourceTypeOptions = [
   ["primary_platform", "首发/官方平台"],
@@ -104,14 +107,15 @@ const sourceTypeOptions = [
   ["other", "其他"],
 ];
 
-export function WorkRatingPanel({ identificationStatus, workId }: { identificationStatus: IdentificationStatus; workId: string }) {
+export function WorkRatingPanel({ identificationStatus, modelName, workId, workTitle }: { identificationStatus: IdentificationStatus; modelName: string; workId: string; workTitle: string }) {
   const [runs, setRuns] = useState<RatingRun[]>([]);
   const [supplements, setSupplements] = useState<Supplement[]>([]);
   const [summary, setSummary] = useState<Omit<RunsData, "runs" | "legacyRating">>({});
   const [legacyRating, setLegacyRating] = useState<RunsData["legacyRating"]>(null);
-  const [error, setError] = useState("");
+  const [error, setError] = useState<ApiErrorInfo | null>(null);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
+  const [pendingAction, setPendingAction] = useState<RatingActionMode | null>(null);
   const [running, setRunning] = useState(false);
 
   const reload = useCallback(async () => {
@@ -134,45 +138,51 @@ export function WorkRatingPanel({ identificationStatus, workId }: { identificati
     let cancelled = false;
     async function load() {
       try { await reload(); }
-      catch (caught) { if (!cancelled) setError(messageOf(caught)); }
+      catch (caught) { if (!cancelled) setError(errorInfoOf(caught)); }
       finally { if (!cancelled) setLoading(false); }
     }
     void load();
     return () => { cancelled = true; };
   }, [reload]);
 
-  async function runRating(mode: "new" | "rerun" | "supplement") {
+  async function runRating(mode: RatingActionMode) {
+    if (running) return;
     setRunning(true);
-    setError("");
+    setError(null);
     setMessage("");
+    setPendingAction(null);
     try {
-      await request(`/api/works/${workId}/rating/run`, { method: "POST" });
+      await request(`/api/works/${workId}/rating/run`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ costConfirmed: true, provider: "openai" }),
+      });
       await reload();
       setMessage(mode === "supplement"
         ? "已基于当前人工补充证据重新生成 OpenAI 评级建议，请复核后再采用。"
         : "OpenAI 评级建议已生成。未点击采用前，不会覆盖当前评级。");
     } catch (caught) {
-      setError(messageOf(caught));
+      setError(errorInfoOf(caught));
     } finally {
       setRunning(false);
     }
   }
 
   async function adopt(runId: string) {
-    setError("");
+    setError(null);
     setMessage("");
     try {
       await request(`/api/works/${workId}/rating/runs/${runId}/adopt`, { method: "POST" });
       await reload();
       setMessage("已采用该 OpenAI 评级结果，当前评级投影已更新。");
     } catch (caught) {
-      setError(messageOf(caught));
+      setError(errorInfoOf(caught));
     }
   }
 
   async function addSupplement(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setError("");
+    setError(null);
     setMessage("");
     const form = event.currentTarget;
     const body = Object.fromEntries(new FormData(form).entries());
@@ -186,20 +196,20 @@ export function WorkRatingPanel({ identificationStatus, workId }: { identificati
       await reload();
       setMessage("补充证据已保存。可以基于补充证据重新评级。");
     } catch (caught) {
-      setError(messageOf(caught));
+      setError(errorInfoOf(caught));
     }
   }
 
   async function removeSupplement(item: Supplement) {
     if (!window.confirm(`确认删除补充证据「${item.title}」吗？`)) return;
-    setError("");
+    setError(null);
     setMessage("");
     try {
       await request(`/api/works/${workId}/rating-supplements/${item.id}`, { method: "DELETE" });
       await reload();
       setMessage("补充证据已删除。");
     } catch (caught) {
-      setError(messageOf(caught));
+      setError(errorInfoOf(caught));
     }
   }
 
@@ -223,11 +233,12 @@ export function WorkRatingPanel({ identificationStatus, workId }: { identificati
 
       <WorkflowNotice status={identificationStatus} />
       {message ? <p className="mt-3 rounded-md bg-green-50 p-3 text-sm text-green-800">{message}</p> : null}
-      {error ? <p className="mt-3 rounded-md bg-red-50 p-3 text-sm text-red-800">{error}</p> : null}
+      {error ? <RatingErrorAlert error={error} /> : null}
       {loading ? <p className="mt-4 text-sm text-slate-500">正在读取评级记录...</p> : null}
 
       <CurrentRatingCard adopted={adopted} legacyRating={legacyRating} />
-      <RatingActionPanel hasLatest={Boolean(runs.length)} supplementCount={supplements.length} running={running} onRun={runRating} />
+      <RatingActionPanel hasLatest={Boolean(runs.length)} supplementCount={supplements.length} running={running} onRun={setPendingAction} />
+      {pendingAction ? <CostConfirmationDialog action={pendingAction} modelName={modelName} onCancel={() => setPendingAction(null)} onConfirm={() => void runRating(pendingAction)} running={running} workTitle={workTitle} /> : null}
       {latestProblem ? <ProblemRunCard run={latestProblem} /> : null}
       {pendingSuggestion ? <PendingSuggestionCard current={adopted} run={pendingSuggestion} onAdopt={() => void adopt(pendingSuggestion.id)} onKeep={() => setMessage("已保留当前评级。待采用建议不会覆盖正式评级。")} /> : null}
       <SupplementPanel onAdd={addSupplement} onRemove={removeSupplement} supplements={supplements} />
@@ -254,7 +265,7 @@ function CurrentRatingCard({ adopted, legacyRating }: { adopted: RatingRun | nul
   );
 }
 
-function RatingActionPanel({ hasLatest, onRun, running, supplementCount }: { hasLatest: boolean; running: boolean; supplementCount: number; onRun: (mode: "new" | "rerun" | "supplement") => void }) {
+function RatingActionPanel({ hasLatest, onRun, running, supplementCount }: { hasLatest: boolean; running: boolean; supplementCount: number; onRun: (mode: RatingActionMode) => void }) {
   return (
     <div className="mt-5 rounded-lg border border-blue-100 bg-blue-50 p-4">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -272,6 +283,45 @@ function RatingActionPanel({ hasLatest, onRun, running, supplementCount }: { has
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+function CostConfirmationDialog({ action, modelName, onCancel, onConfirm, running, workTitle }: { action: RatingActionMode; modelName: string; onCancel: () => void; onConfirm: () => void; running: boolean; workTitle: string }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4">
+      <div className="w-full max-w-lg rounded-xl bg-white p-5 shadow-xl">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="font-semibold text-slate-950">确认调用真实 OpenAI</h3>
+          <StatusBadge tone="amber">可能产生费用</StatusBadge>
+        </div>
+        <div className="mt-4 space-y-2 text-sm text-slate-700">
+          <p>本次操作将调用真实 OpenAI API 生成作品价值评级。</p>
+          <p>当前作品：<span className="font-medium text-slate-950">{workTitle}</span></p>
+          <p>当前模型：<span className="font-medium text-slate-950">{modelName}</span></p>
+          <p>本次只处理一部作品，结果生成后仍需人工采用才会成为正式评级。</p>
+          {action === "supplement" ? <p>本次会同时提交当前人工补充证据。</p> : null}
+        </div>
+        <div className="mt-5 flex flex-wrap justify-end gap-2">
+          <button className="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 disabled:opacity-50" disabled={running} onClick={onCancel} type="button">取消</button>
+          <button className="rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white disabled:opacity-50" disabled={running} onClick={onConfirm} type="button">
+            {running ? "OpenAI 评级运行中..." : "确认并调用 OpenAI"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RatingErrorAlert({ error }: { error: ApiErrorInfo }) {
+  return (
+    <div className="mt-3 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+      <div className="flex flex-wrap items-center gap-2">
+        <StatusBadge tone="red">{error.code || "评级失败"}</StatusBadge>
+        <p className="font-medium">{error.message}</p>
+      </div>
+      {error.hint ? <p className="mt-2">{error.hint}</p> : null}
+      {error.code === "OPENAI_NOT_CONFIGURED" ? <Link className="mt-2 inline-block font-medium text-red-900 underline" href="/settings">前往设置页查看配置状态</Link> : null}
     </div>
   );
 }
@@ -560,10 +610,24 @@ function WorkflowNotice({ status }: { status: IdentificationStatus }) {
 async function request<T = unknown>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, init);
   const payload = await response.json();
-  if (!response.ok || !payload.success) throw new Error([payload.message, ...(payload.errors || [])].filter(Boolean).join(" | "));
+  if (!response.ok || !payload.success) throw new ApiRequestError(payload);
   return payload.data as T;
 }
-function messageOf(error: unknown) { return error instanceof Error ? error.message : "未知错误"; }
+class ApiRequestError extends Error {
+  readonly code?: string;
+  readonly hint?: string;
+
+  constructor(payload: { code?: string; error?: { code?: string; hint?: string; message?: string }; message?: string }) {
+    super(payload.error?.message || payload.message || "未知错误");
+    this.name = "ApiRequestError";
+    this.code = payload.code || payload.error?.code;
+    this.hint = payload.error?.hint;
+  }
+}
+function errorInfoOf(error: unknown): ApiErrorInfo {
+  if (error instanceof ApiRequestError) return { code: error.code, hint: error.hint, message: error.message };
+  return { message: error instanceof Error ? error.message : "未知错误" };
+}
 function numberText(value: number | null | undefined) { return value === null || value === undefined ? "-" : String(Math.round(value * 10) / 10); }
 function percentText(value: number | null | undefined) { return value === null || value === undefined ? "-" : `${Math.round(value * 100)}%`; }
 function formatDate(value: string) { return new Date(value).toLocaleString("zh-CN", { hour12: false }); }
