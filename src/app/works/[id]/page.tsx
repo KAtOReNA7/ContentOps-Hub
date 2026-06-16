@@ -160,6 +160,8 @@ export default async function WorkDetailPage({ params }: WorkDetailPageProps) {
           hasIdentification: Boolean(initialIdentification),
           hasImportedAuthor: Boolean(work.author?.trim()),
         }}
+        modelName={process.env.OPENAI_RATING_MODEL || process.env.OPENAI_TEXT_MODEL || "未配置"}
+        workTitle={work.title}
         workId={work.id}
       />
       </div>

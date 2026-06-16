@@ -3,9 +3,22 @@ import { generateRatingWithOpenAI, OpenAIRatingValidationError, OPENAI_RATING_PR
 import type { OpenAIRatingResultPayload, RatingInput, RatingResult, RatingSupplementInput } from "@/lib/rating/rating-types";
 import { prisma } from "@/server/db";
 import { normalizeContentType, normalizeSearchEvidenceForRating } from "@/lib/evidence/source-taxonomy";
-import { appendRatingRecoveryHint, mapRatingFailureToUserMessage, mapRatingInvalidReasonToUserMessage } from "@/lib/rating/rating-error-messages";
+import { validateOpenAIRatingConfig } from "@/lib/rating/openai-rating-config";
+import { appendRatingRecoveryHint, mapRatingInvalidReasonToUserMessage } from "@/lib/rating/rating-error-messages";
+import { createRatingRequestError, normalizeRatingError } from "@/lib/rating/rating-errors";
 
 export async function runOpenAIRating(workId: string, options: { adoptResult?: boolean } = {}) {
+  const runningRun = await prisma.workRatingRun.findFirst({ where: { workId, status: "running" }, select: { id: true } });
+  if (runningRun) {
+    throw createRatingRequestError({
+      code: "RATING_ALREADY_RUNNING",
+      userMessage: "该作品已有 OpenAI 评级正在运行，本次请求未执行。",
+      hint: "请等待当前评级完成后再重试；系统不会创建重复运行记录。",
+      httpStatus: 409,
+      runStatus: "failed",
+    });
+  }
+  validateOpenAIRatingConfig();
   const snapshot = await buildRatingSnapshot(workId);
   const model = process.env.OPENAI_RATING_MODEL || process.env.OPENAI_TEXT_MODEL || "未配置";
   const run = await prisma.workRatingRun.create({
@@ -58,14 +71,19 @@ export async function runOpenAIRating(workId: string, options: { adoptResult?: b
     return getRatingRun(saved.id);
   } catch (error) {
     const isInvalid = error instanceof OpenAIRatingValidationError;
-    const errorMessage = appendRatingRecoveryHint(
-      isInvalid ? mapRatingInvalidReasonToUserMessage(safeErrorMessage(error)) : mapRatingFailureToUserMessage(error),
-    );
+    const normalized = isInvalid ? {
+      code: "OPENAI_INVALID_RESPONSE" as const,
+      userMessage: mapRatingInvalidReasonToUserMessage(safeErrorMessage(error)),
+      hint: "请重新生成评级，或补充更明确的人工证据后重试；已有评级结果会继续保留。",
+      httpStatus: 422,
+      runStatus: "invalid" as const,
+    } : normalizeRatingError(error);
+    const errorMessage = appendRatingRecoveryHint(normalized.userMessage);
     await prisma.workRatingRun.update({
       where: { id: run.id },
-      data: { status: isInvalid ? "invalid" : "failed", errorMessage },
+      data: { status: normalized.runStatus, errorMessage },
     });
-    throw new Error(errorMessage);
+    throw createRatingRequestError({ ...normalized, userMessage: errorMessage });
   }
 }
 

@@ -214,3 +214,26 @@ OpenAI 必须逐条输出 `searchResultAnalysis`，并将结果分区为：
 ### 采用与隔离
 
 只有 `success` 状态的 OpenAI run 可以被采用。点击“采用该评级结果”后，系统会将该 run 标记为 adopted，并写入 `WorkRating` 兼容投影，供书名简介、导出和看板使用。invalid / failed 不允许采用，也不会覆盖当前采用评级。legacy rules 区域默认折叠，并始终标记为“历史规则评级，仅供参考，不参与当前正式评级”。
+
+## 单本 OpenAI 评级成本确认与失败状态
+
+单本真实 OpenAI 评级 API 包括：
+
+- `POST /api/works/[id]/rating/run`
+- `POST /api/works/[id]/rating/rerun`
+- 兼容 `POST /api/works/[id]/rating`
+
+真实 OpenAI 调用必须传入：
+
+```json
+{
+  "provider": "openai",
+  "costConfirmed": true
+}
+```
+
+缺少确认会返回 `COST_CONFIRMATION_REQUIRED`，不会调用 OpenAI，也不会创建成功评级记录。`rerun` 每次都需要新的确认，不继承历史确认。
+
+当同一作品已有 `running` 的 `WorkRatingRun` 时，API 返回 HTTP 409 和 `RATING_ALREADY_RUNNING`，并拒绝新的 Provider 调用。
+
+错误码包括 `OPENAI_NOT_CONFIGURED`、`OPENAI_TIMEOUT`、`OPENAI_NETWORK_ERROR`、`OPENAI_AUTH_ERROR`、`OPENAI_RATE_LIMITED`、`OPENAI_UPSTREAM_ERROR` 和 `OPENAI_INVALID_RESPONSE`。配置、网络、鉴权、限流和上游错误保存为 `failed`；非法模型输出保存为 `invalid`。错误信息会脱敏，不返回 API Key、完整 Base URL、请求头、堆栈或上游敏感正文。

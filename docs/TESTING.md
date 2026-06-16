@@ -68,3 +68,19 @@ npm run test:batch-recovery
 - OpenAI 失败和非法返回：failed / invalid UI 展示和不回退规则。
 - 导出大数据量：多作品、多历史记录和大量封面文件下的耗时和内存。
 - SSRF 边界：远程封面 URL 的 IPv6、link-local、重定向和异常 content-type。
+## 单本 OpenAI 评级成本确认测试
+
+专项命令：
+
+```bash
+npm run test:single-rating-cost
+```
+
+该测试使用内部 Provider stub，不调用真实 OpenAI。覆盖：
+
+- 三个单本评级入口共享同一成本确认边界。
+- 缺少 `costConfirmed: true` 时返回 `COST_CONFIRMATION_REQUIRED`，且 Provider 不会被调用。
+- 已确认请求会调用 stub runner 并返回成功。
+- 同一作品已有 `running` 评级时返回 `RATING_ALREADY_RUNNING`，且发生在 Provider 调用之前。
+- 配置缺失、超时、网络、401、429、5xx、非法响应会归一为稳定错误码。
+- 错误响应不包含 API Key、Bearer token、堆栈或敏感上游正文。
